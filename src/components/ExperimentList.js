@@ -13,6 +13,18 @@ const ExperimentList = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedTags, setSelectedTags] = useState([]);
+  
+  // Edit modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingExperiment, setEditingExperiment] = useState(null);
+  const [editForm, setEditForm] = useState({
+    code: '',
+    description: '',
+    author: '',
+    status: 'valid',
+    tags: [],
+    improvements: []
+  });
 
   // Get all unique tags for filtering
   const allTags = [...new Set(experiments.flatMap(exp => exp.tags))].sort();
@@ -76,14 +88,21 @@ const ExperimentList = () => {
         fontWeight: '500',
         backgroundColor: selected ? '#3182CE' : '#EDF2F7',
         color: selected ? 'white' : '#4A5568',
-        cursor: 'pointer',
+        cursor: onClick ? 'pointer' : 'default',
         display: 'inline-block',
         margin: '2px',
         transition: 'all 0.2s ease',
+        whiteSpace: 'nowrap',
+        maxWidth: '120px',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        border: '1px solid',
+        borderColor: selected ? '#3182CE' : '#E2E8F0',
         '&:hover': {
           backgroundColor: selected ? '#2C5282' : '#E2E8F0',
         }
       }}
+      title={tag}
     >
       {tag}
     </span>
@@ -271,6 +290,85 @@ const ExperimentList = () => {
     setCurrentPage(1);
   };
 
+  // Edit modal functions
+  const openEditModal = (experiment) => {
+    setEditingExperiment(experiment);
+    setEditForm({
+      code: experiment.code,
+      description: experiment.description,
+      author: experiment.author,
+      status: experiment.status,
+      tags: [...experiment.tags],
+      improvements: [...experiment.improvements]
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingExperiment(null);
+    setEditForm({
+      code: '',
+      description: '',
+      author: '',
+      status: 'valid',
+      tags: [],
+      improvements: []
+    });
+  };
+
+  const handleEditFormChange = (field, value) => {
+    setEditForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleTagToggle = (tag) => {
+    setEditForm(prev => ({
+      ...prev,
+      tags: prev.tags.includes(tag)
+        ? prev.tags.filter(t => t !== tag)
+        : [...prev.tags, tag]
+    }));
+  };
+
+  const handleImprovementToggle = (improvement) => {
+    setEditForm(prev => ({
+      ...prev,
+      improvements: prev.improvements.includes(improvement)
+        ? prev.improvements.filter(imp => imp !== improvement)
+        : [...prev.improvements, improvement]
+    }));
+  };
+
+  const addNewTag = (newTag) => {
+    if (newTag.trim() && !editForm.tags.includes(newTag.trim())) {
+      setEditForm(prev => ({
+        ...prev,
+        tags: [...prev.tags, newTag.trim()]
+      }));
+    }
+  };
+
+  const saveExperiment = () => {
+    if (!editingExperiment) return;
+    
+    // Here you would typically save to your backend
+    // For now, we'll just update the local experiments array
+    const experimentIndex = experiments.findIndex(exp => exp.id === editingExperiment.id);
+    if (experimentIndex !== -1) {
+      experiments[experimentIndex] = {
+        ...experiments[experimentIndex],
+        ...editForm
+      };
+    }
+    
+    closeEditModal();
+    // Force re-render by updating a state
+    setCurrentPage(currentPage);
+  };
+
   return (
     <PageContainer>
       <PageHeader title="All Experiments" />
@@ -341,7 +439,7 @@ const ExperimentList = () => {
           }}>
             Filter by Tags:
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', alignItems: 'flex-start' }}>
             {allTags.map(tag => (
               <TagBadge
                 key={tag}
@@ -506,7 +604,7 @@ const ExperimentList = () => {
                     <td style={tdStyle}>{exp.author}</td>
                     <td style={tdStyle}>{exp.description}</td>
                     <td style={tdStyle}>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', maxWidth: '200px', alignItems: 'flex-start' }}>
                         {exp.tags.map(tag => (
                           <TagBadge key={tag} tag={tag} />
                         ))}
@@ -556,6 +654,13 @@ const ExperimentList = () => {
                           style={{ padding: '6px 12px', fontSize: '12px' }}
                         >
                           Details
+                        </Button>
+                        <Button 
+                          variant="secondary" 
+                          onClick={() => openEditModal(exp)}
+                          style={{ padding: '6px 12px', fontSize: '12px' }}
+                        >
+                          Edit
                         </Button>
                       </div>
                     </td>
@@ -673,7 +778,7 @@ const ExperimentList = () => {
                       </span>
                     </td>
                     <td style={tdStyle}>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', maxWidth: '150px', alignItems: 'flex-start' }}>
                         {exp.tags.slice(0, 2).map(tag => (
                           <TagBadge key={tag} tag={tag} />
                         ))}
@@ -684,6 +789,7 @@ const ExperimentList = () => {
                             fontSize: '11px',
                             backgroundColor: '#EDF2F7',
                             color: '#4A5568',
+                            whiteSpace: 'nowrap',
                           }}>
                             +{exp.tags.length - 2}
                           </span>
@@ -747,6 +853,13 @@ const ExperimentList = () => {
                           style={{ padding: '6px 12px', fontSize: '12px' }}
                         >
                           Details
+                        </Button>
+                        <Button 
+                          variant="secondary" 
+                          onClick={() => openEditModal(exp)}
+                          style={{ padding: '6px 12px', fontSize: '12px' }}
+                        >
+                          Edit
                         </Button>
                       </div>
                     </td>
@@ -851,7 +964,7 @@ const ExperimentList = () => {
                       </span>
                     </td>
                     <td style={tdStyle}>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', maxWidth: '120px', alignItems: 'flex-start' }}>
                         {exp.tags.slice(0, 2).map(tag => (
                           <TagBadge key={tag} tag={tag} />
                         ))}
@@ -862,6 +975,7 @@ const ExperimentList = () => {
                             fontSize: '11px',
                             backgroundColor: '#EDF2F7',
                             color: '#4A5568',
+                            whiteSpace: 'nowrap',
                           }}>
                             +{exp.tags.length - 2}
                           </span>
@@ -1018,6 +1132,13 @@ const ExperimentList = () => {
                         >
                           Details
                         </Button>
+                        <Button 
+                          variant="secondary" 
+                          onClick={() => openEditModal(exp)}
+                          style={{ padding: '6px 12px', fontSize: '12px' }}
+                        >
+                          Edit
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -1101,6 +1222,209 @@ const ExperimentList = () => {
           Export CSV
         </Button>
       </Card>
+
+      {/* Edit Modal */}
+      {isEditModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            padding: '24px',
+            width: '90%',
+            maxWidth: '600px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '24px',
+            }}>
+              <h2 style={{ margin: 0, color: '#2D3748' }}>
+                Edit Experiment: {editingExperiment?.code}
+              </h2>
+              <button
+                onClick={closeEditModal}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#718096',
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Basic Information */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#4A5568' }}>
+                  Code
+                </label>
+                <Input
+                  value={editForm.code}
+                  onChange={(e) => handleEditFormChange('code', e.target.value)}
+                  placeholder="Experiment code"
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#4A5568' }}>
+                  Description
+                </label>
+                <textarea
+                  value={editForm.description}
+                  onChange={(e) => handleEditFormChange('description', e.target.value)}
+                  placeholder="Experiment description"
+                  style={{
+                    width: '100%',
+                    minHeight: '80px',
+                    padding: '12px',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    resize: 'vertical',
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#4A5568' }}>
+                  Author
+                </label>
+                <Input
+                  value={editForm.author}
+                  onChange={(e) => handleEditFormChange('author', e.target.value)}
+                  placeholder="Author name"
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#4A5568' }}>
+                  Status
+                </label>
+                <Select
+                  value={editForm.status}
+                  onChange={(e) => handleEditFormChange('status', e.target.value)}
+                >
+                  <option value="valid">Valid</option>
+                  <option value="invalid">Invalid</option>
+                </Select>
+              </div>
+
+              {/* Tags */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#4A5568' }}>
+                  Tags
+                </label>
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', marginBottom: '8px', alignItems: 'flex-start' }}>
+                    {allTags.map(tag => (
+                      <TagBadge
+                        key={tag}
+                        tag={tag}
+                        selected={editForm.tags.includes(tag)}
+                        onClick={() => handleTagToggle(tag)}
+                      />
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <Input
+                      placeholder="Add new tag"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          addNewTag(e.target.value);
+                          e.target.value = '';
+                        }
+                      }}
+                      style={{ flex: 1 }}
+                    />
+                    <Button
+                      variant="secondary"
+                      onClick={(e) => {
+                        const input = e.target.previousSibling;
+                        addNewTag(input.value);
+                        input.value = '';
+                      }}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                </div>
+                {editForm.tags.length > 0 && (
+                  <div style={{ fontSize: '12px', color: '#718096' }}>
+                    Selected: {editForm.tags.join(', ')}
+                  </div>
+                )}
+              </div>
+
+              {/* Improvements */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#4A5568' }}>
+                  Improvements
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', alignItems: 'flex-start' }}>
+                  {['Open', 'Close', 'Reg'].map(imp => (
+                    <span
+                      key={imp}
+                      onClick={() => handleImprovementToggle(imp)}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '16px',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        backgroundColor: editForm.improvements.includes(imp) ? '#3182CE' : '#EDF2F7',
+                        color: editForm.improvements.includes(imp) ? 'white' : '#4A5568',
+                        cursor: 'pointer',
+                        border: '1px solid #E2E8F0',
+                        transition: 'all 0.2s ease',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {imp}
+                    </span>
+                  ))}
+                </div>
+                {editForm.improvements.length > 0 && (
+                  <div style={{ fontSize: '12px', color: '#718096', marginTop: '8px' }}>
+                    Selected: {editForm.improvements.join(', ')}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end',
+              marginTop: '24px',
+              paddingTop: '16px',
+              borderTop: '1px solid #E2E8F0',
+            }}>
+              <Button variant="secondary" onClick={closeEditModal}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={saveExperiment}>
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageContainer>
   );
 };
