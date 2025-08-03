@@ -48,6 +48,59 @@ const generateExperiments = () => {
       );
     }
 
+    // Generate tags
+    const allTags = [
+      'high-frequency', 'low-latency', 'machine-learning', 'deep-learning',
+      'neural-network', 'optimization', 'risk-management', 'backtesting',
+      'live-trading', 'paper-trading', 'alpha-generation', 'beta-neutral',
+      'momentum', 'mean-reversion', 'arbitrage', 'statistical-arbitrage',
+      'market-making', 'trend-following', 'contrarian', 'scalping',
+      'swing-trading', 'position-trading', 'quantitative', 'fundamental',
+      'technical-analysis', 'sentiment-analysis', 'news-trading', 'event-driven'
+    ];
+    
+    const numTags = Math.floor(Math.random() * 4) + 1; // 1-4 tags per experiment
+    const tags = [...allTags]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, numTags);
+
+    // Generate comprehensive financial metrics
+    const basePnL = (Math.random() - 0.5) * 10000; // -5000 to 5000
+    const profit = Math.max(0, basePnL);
+    const loss = Math.max(0, -basePnL);
+    const totalTrades = Math.floor(Math.random() * 1000) + 50;
+    const winRate = 0.3 + Math.random() * 0.5; // 30% to 80%
+    const avgWin = Math.random() * 200 + 50;
+    const avgLoss = Math.random() * 150 + 30;
+    const sharpeRatio = (Math.random() - 0.5) * 4; // -2 to 2
+    const maxDrawdown = Math.random() * 0.3; // 0% to 30%
+    const volatility = Math.random() * 0.4 + 0.1; // 10% to 50%
+
+    // Generate quarterly PnL data
+    const pnlQ1 = (Math.random() - 0.5) * 3000;
+    const pnlQ2 = (Math.random() - 0.5) * 3000;
+    const pnlQ3 = (Math.random() - 0.5) * 3000;
+    const pnlQ4 = (Math.random() - 0.5) * 3000;
+
+    // Generate ML metrics
+    const precision = 0.4 + Math.random() * 0.5; // 40% to 90%
+    const recall = 0.3 + Math.random() * 0.6; // 30% to 90%
+    const f1Score = 2 * (precision * recall) / (precision + recall);
+    const accuracy = 0.5 + Math.random() * 0.4; // 50% to 90%
+
+    // Generate validation metrics
+    const validationPrecision = precision + (Math.random() - 0.5) * 0.2;
+    const validationRecall = recall + (Math.random() - 0.5) * 0.2;
+    const validationF1 = 2 * (validationPrecision * validationRecall) / (validationPrecision + validationRecall);
+    const validationAccuracy = accuracy + (Math.random() - 0.5) * 0.15;
+
+    // Generate additional performance metrics
+    const profitFactor = Math.random() * 3 + 0.5; // 0.5 to 3.5
+    const calmarRatio = Math.random() * 2 - 1; // -1 to 1
+    const sortinoRatio = (Math.random() - 0.5) * 3; // -1.5 to 1.5
+    const maxConsecutiveLosses = Math.floor(Math.random() * 10) + 1;
+    const avgTradeDuration = Math.floor(Math.random() * 24) + 1; // 1-24 hours
+
     return {
       id,
       code: `EXP${String(id).padStart(3, '0')}`,
@@ -56,6 +109,7 @@ const generateExperiments = () => {
       status,
       author: authors[Math.floor(Math.random() * authors.length)],
       description: descriptions[Math.floor(Math.random() * descriptions.length)],
+      tags,
       metrics: {
         open: {
           buy: baseOpenBuy,
@@ -70,9 +124,42 @@ const generateExperiments = () => {
           highlowBuy: baseHighLow,
           highlowSell: baseHighLow - Math.random() * 0.05,
         }
+      },
+      financial: {
+        pnl: basePnL,
+        profit,
+        loss,
+        totalTrades,
+        winRate,
+        avgWin,
+        avgLoss,
+        sharpeRatio,
+        maxDrawdown,
+        volatility,
+        // Quarterly PnL
+        pnlQ1,
+        pnlQ2,
+        pnlQ3,
+        pnlQ4,
+        // Additional financial metrics
+        profitFactor,
+        calmarRatio,
+        sortinoRatio,
+        maxConsecutiveLosses,
+        avgTradeDuration
+      },
+      mlMetrics: {
+        precision,
+        recall,
+        f1Score,
+        accuracy,
+        validationPrecision,
+        validationRecall,
+        validationF1,
+        validationAccuracy
       }
     };
   });
 };
 
-export const experiments = generateExperiments(); 
+export const experiments = generateExperiments();
