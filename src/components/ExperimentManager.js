@@ -10,7 +10,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { getFrontendExperiments } from '../api/fulltests';
+import { getFrontendExperiments, listFulltests } from '../api/fulltests';
 
 ChartJS.register(
   CategoryScale,
@@ -97,8 +97,9 @@ const ExperimentManager = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const { results } = await getFrontendExperiments({ limit: 50, page: 1 });
+        const { results } = await listFulltests({});
         const normalized = (results || []).map(normalizeExperiment);
+        console.log(normalized.filter(exp => ensureArray(exp.improvements).length > 0));
         if (mounted) setExperiments(normalized);
       } catch (e) {
         if (mounted) setError(e.data || e.message || 'Failed to load experiments');
@@ -239,7 +240,7 @@ const ExperimentManager = () => {
                     borderRadius: '0 4px 4px 0'
                   }}
                 >
-                  <div style={{ fontWeight: 'bold' }}>{exp.code}</div>
+                  <div style={{ fontWeight: 'bold' }}>{exp.name}</div>
                   <div style={{ fontSize: '12px', color: '#4A5568' }}>{exp.description}</div>
                   <div style={{ marginTop: '6px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                     {ensureArray(exp.improvements).map((imp, idx) => (
