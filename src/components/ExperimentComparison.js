@@ -1,58 +1,95 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageContainer, PageHeader, Card, Select } from './shared/UIComponents';
+import { getFrontendExperiments } from '../api/fulltests';
+
+function parseMaybeJSON(value, fallback) {
+  if (value == null) return fallback;
+  if (typeof value !== 'string') return value;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function normalizeExperiment(exp) {
+  return {
+    ...exp,
+    metrics: parseMaybeJSON(exp.metrics, exp.metrics || {}),
+    improvements: Array.isArray(exp.improvements) || typeof exp.improvements === 'string'
+      ? exp.improvements
+      : (exp.improvement_type ?? []),
+  };
+}
 
 const ExperimentComparison = () => {
   const [selectedExp1, setSelectedExp1] = useState('');
   const [selectedExp2, setSelectedExp2] = useState('');
+  const [options, setOptions] = useState([]); // array of { code, id, pk }
+  const [exp1, setExp1] = useState(null);
+  const [exp2, setExp2] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const experiments = [
-    { 
-      id: 1, 
-      code: 'EXP001',
-      metrics: {
-        open: {
-          buy: 205,
-          sell: 195
-        },
-        close: {
-          buy: 150,
-          sell: 148
-        },
-        reg: {
-          mse: 0.0182,
-          highlowBuy: 0.85,
-          highlowSell: 0.82
-        }
+  useEffect(() => {
+    let mounted = true;
+    async function loadOptions() {
+      setError(null);
+      try {
+        const { results } = await getFrontendExperiments({ limit: 100, page: 1 });
+        if (!mounted) return;
+        const list = (results || []).map(r => ({ code: r.code, id: r.id, pk: r.pk }));
+        setOptions(list);
+      } catch (e) {
+        if (mounted) setError(e.data || e.message || 'Failed to load experiments');
       }
-    },
-    // ... add more experiments
-  ];
+    }
+    loadOptions();
+    return () => { mounted = false; };
+  }, []);
 
-  const exp1 = experiments.find(exp => exp.code === selectedExp1);
-  const exp2 = experiments.find(exp => exp.code === selectedExp2);
+  async function loadByCode(code, setter) {
+    if (!code) { setter(null); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      const { results } = await getFrontendExperiments({ search: code, limit: 1, page: 1 });
+      const match = Array.isArray(results) ? results.find(r => r.code === code) || results[0] : null;
+      setter(match ? normalizeExperiment(match) : null);
+    } catch (e) {
+      setter(null);
+      setError(e.data || e.message || 'Failed to load experiment');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { loadByCode(selectedExp1, setExp1); }, [selectedExp1]);
+  useEffect(() => { loadByCode(selectedExp2, setExp2); }, [selectedExp2]);
 
   const MetricComparison = ({ label, metrics1, metrics2, color }) => {
     if (!metrics1 || !metrics2) return null;
 
     const renderValue = (key, value) => {
-      if (key === 'mse') return value.toFixed(4);
-      if (key.includes('highlow')) return `${(value * 100).toFixed(1)}%`;
+      if (key === 'mse') return Number(value).toFixed(4);
+      if (key.toLowerCase().includes('highlow')) return `${(Number(value) * 100).toFixed(1)}%`;
       return value;
     };
 
     const getChangeIndicator = (key, value1, value2) => {
-      const improvement = key === 'mse' ? value2 > value1 : value1 > value2;
-      const change = key === 'mse' 
-        ? ((value2 - value1) / value1 * 100).toFixed(2)
-        : ((value1 - value2) / value2 * 100).toFixed(2);
-      
+      const v1 = Number(value1);
+      const v2 = Number(value2);
+      const improvement = key === 'mse' ? v2 > v1 : v1 > v2;
+      const denom = key === 'mse' ? v1 : v2;
+      const change = denom ? ((key === 'mse' ? (v2 - v1) / v1 : (v1 - v2) / v2) * 100).toFixed(2) : '0.00';
       return (
         <span style={{
           color: improvement ? '#38A169' : '#E53E3E',
           fontSize: '12px',
           marginLeft: '8px',
         }}>
-          {improvement ? '↑' : '↓'} {Math.abs(change)}%
+          {improvement ? '↑' : '↓'} {Math.abs(Number(change))}%
         </span>
       );
     };
@@ -87,8 +124,8 @@ const ExperimentComparison = () => {
             >
               <div style={{ color: '#4A5568', fontWeight: '500' }}>
                 {key === 'mse' ? 'MSE' : 
-                  key.includes('highlow') ? 
-                    `High/Low ${key.replace('highlow', '')}` : 
+                  key.toLowerCase().includes('highlow') ? 
+                    `High/Low ${key.replace(/highlow/i, '')}` : 
                     key.charAt(0).toUpperCase() + key.slice(1)}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -121,8 +158,8 @@ const ExperimentComparison = () => {
             placeholder="Select first experiment"
           >
             <option value="">Select Experiment 1</option>
-            {experiments.map(exp => (
-              <option key={exp.id} value={exp.code}>{exp.code}</option>
+            {options.map(opt => (
+              <option key={opt.pk ?? opt.id ?? opt.code} value={opt.code}>{opt.code}</option>
             ))}
           </Select>
           <Select
@@ -131,30 +168,34 @@ const ExperimentComparison = () => {
             placeholder="Select second experiment"
           >
             <option value="">Select Experiment 2</option>
-            {experiments.map(exp => (
-              <option key={exp.id} value={exp.code}>{exp.code}</option>
+            {options.map(opt => (
+              <option key={opt.pk ?? opt.id ?? opt.code} value={opt.code}>{opt.code}</option>
             ))}
           </Select>
         </div>
+
+        {error && (
+          <div style={{ color: '#E53E3E', marginBottom: '12px' }}>{String(error)}</div>
+        )}
 
         {exp1 && exp2 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <MetricComparison
               label="Open Metrics"
-              metrics1={exp1.metrics.open}
-              metrics2={exp2.metrics.open}
+              metrics1={exp1.metrics?.open || {}}
+              metrics2={exp2.metrics?.open || {}}
               color="#38A169"
             />
             <MetricComparison
               label="Close Metrics"
-              metrics1={exp1.metrics.close}
-              metrics2={exp2.metrics.close}
+              metrics1={exp1.metrics?.close || {}}
+              metrics2={exp2.metrics?.close || {}}
               color="#E53E3E"
             />
             <MetricComparison
               label="Reg Metrics"
-              metrics1={exp1.metrics.reg}
-              metrics2={exp2.metrics.reg}
+              metrics1={exp1.metrics?.reg || {}}
+              metrics2={exp2.metrics?.reg || {}}
               color="#3182CE"
             />
           </div>
@@ -164,7 +205,7 @@ const ExperimentComparison = () => {
             textAlign: 'center',
             color: '#718096',
           }}>
-            Select two experiments to compare their metrics
+            {loading ? 'Loading...' : 'Select two experiments to compare their metrics'}
           </div>
         )}
       </Card>

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -10,7 +10,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { experiments } from '../data/experiments';
+import { getFrontendExperiments } from '../api/fulltests';
 
 ChartJS.register(
   CategoryScale,
@@ -21,6 +21,36 @@ ChartJS.register(
   Tooltip,
   Legend
 );
+
+function parseMaybeJSON(value, fallback) {
+  if (value == null) return fallback;
+  if (typeof value !== 'string') return value;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function ensureArray(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    return value.split(',').map(s => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+function normalizeExperiment(exp) {
+  return {
+    ...exp,
+    tags: ensureArray(exp.tags),
+    improvements: ensureArray(exp.improvements != null ? exp.improvements : exp.improvement_type),
+    financial: parseMaybeJSON(exp.financial, exp.financial || {}),
+    mlMetrics: parseMaybeJSON(exp.mlMetrics, exp.mlMetrics || {}),
+    metrics: parseMaybeJSON(exp.metrics, exp.metrics || {}),
+  };
+}
 
 const Card = ({ title, value, color }) => (
   <div 
@@ -49,8 +79,10 @@ const Card = ({ title, value, color }) => (
 
 const ExperimentManager = () => {
   const chartRef = useRef(null);
+  const [experiments, setExperiments] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Cleanup chart on unmount
   useEffect(() => {
     return () => {
       if (chartRef.current) {
@@ -59,14 +91,33 @@ const ExperimentManager = () => {
     };
   }, []);
 
-  // Baseline values for the tests
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const { results } = await getFrontendExperiments({ limit: 50, page: 1 });
+        const normalized = (results || []).map(normalizeExperiment);
+        if (mounted) setExperiments(normalized);
+      } catch (e) {
+        if (mounted) setError(e.data || e.message || 'Failed to load experiments');
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    }
+    load();
+    return () => { mounted = false; };
+  }, []);
+
+  // Baseline values for the tests (optional: could compute from data)
   const baselineData = {
     open: 200,
     close: 150,
     reg: 180,
   };
 
-  // Dummy data for the chart (mean values over time)
+  // Dummy data for the chart (kept for now)
   const chartLabels = ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5'];
   const data = {
     labels: chartLabels,
@@ -102,29 +153,12 @@ const ExperimentManager = () => {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: {
-        position: 'top',
-      },
-      title: {
-        display: true,
-        text: 'Mean Values Over Time',
-        font: {
-          size: 16
-        }
-      }
+      legend: { position: 'top' },
+      title: { display: true, text: 'Mean Values Over Time', font: { size: 16 } },
     },
     scales: {
-      y: {
-        beginAtZero: false,
-        grid: {
-          color: 'rgba(0,0,0,0.05)'
-        }
-      },
-      x: {
-        grid: {
-          color: 'rgba(0,0,0,0.05)'
-        }
-      }
+      y: { beginAtZero: false, grid: { color: 'rgba(0,0,0,0.05)' } },
+      x: { grid: { color: 'rgba(0,0,0,0.05)' } },
     }
   };
 
@@ -142,7 +176,7 @@ const ExperimentManager = () => {
         paddingBottom: '10px',
         marginBottom: '20px'
       }}>
-        Experiment Manager (Improvements)
+        Experiment Manager (Improvement Types)
       </h2>
 
       {/* Baseline Cards */}
@@ -162,7 +196,7 @@ const ExperimentManager = () => {
         gap: '20px',
         marginBottom: '20px' 
       }}>
-        {/* Improvements List */}
+        {/* Improvement Types List */}
         <div style={{ 
           background: 'white',
           padding: '20px',
@@ -176,12 +210,20 @@ const ExperimentManager = () => {
           }}>
             Improved Experiments
           </h3>
+
+          {isLoading && (
+            <div style={{ color: '#718096', fontSize: '14px' }}>Loading...</div>
+          )}
+          {error && (
+            <div style={{ color: '#E53E3E', fontSize: '14px' }}>{String(error)}</div>
+          )}
+
           <div style={{ 
             maxHeight: '400px',
             overflowY: 'auto'
           }}>
             {experiments
-              .filter(exp => exp.status === 'valid' && exp.improvements.length > 0)
+              .filter(exp => ensureArray(exp.improvements).length > 0)
               .map(exp => (
                 <div 
                   key={exp.id}
@@ -190,31 +232,26 @@ const ExperimentManager = () => {
                     marginBottom: '10px',
                     borderLeft: '4px solid',
                     borderLeftColor: 
-                      exp.improvements.includes('Open') ? 'rgb(75,192,192)' :
-                      exp.improvements.includes('Close') ? 'rgb(255,99,132)' :
+                      ensureArray(exp.improvements).includes('Open') ? 'rgb(75,192,192)' :
+                      ensureArray(exp.improvements).includes('Close') ? 'rgb(255,99,132)' :
                       'rgb(54,162,235)',
                     backgroundColor: '#f8f9fa',
                     borderRadius: '0 4px 4px 0'
                   }}
                 >
                   <div style={{ fontWeight: 'bold' }}>{exp.code}</div>
-                  <div style={{ 
-                    fontSize: '0.9em',
-                    color: '#666',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px'
-                  }}>
-                    <div>Improvements: {exp.improvements.join(', ')}</div>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      color: '#888',
-                      fontSize: '0.85em'
-                    }}>
-                      <span>{exp.author}</span>
-                      <span>{new Date(exp.date).toLocaleDateString()}</span>
-                    </div>
+                  <div style={{ fontSize: '12px', color: '#4A5568' }}>{exp.description}</div>
+                  <div style={{ marginTop: '6px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {ensureArray(exp.improvements).map((imp, idx) => (
+                      <span key={idx} style={{
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        fontSize: '11px',
+                        backgroundColor: imp === 'Open' ? '#F0FFF4' : imp === 'Close' ? '#FFF5F5' : '#EBF8FF',
+                        color: imp === 'Open' ? '#38A169' : imp === 'Close' ? '#E53E3E' : '#3182CE',
+                        border: '1px solid #E2E8F0'
+                      }}>{imp}</span>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -229,11 +266,7 @@ const ExperimentManager = () => {
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
           height: '400px'
         }}>
-          <Line
-            ref={chartRef}
-            data={data}
-            options={options}
-          />
+          <Line ref={chartRef} data={data} options={options} />
         </div>
       </div>
     </div>

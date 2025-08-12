@@ -1,26 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageContainer, PageHeader, Card, Button, Input } from './shared/UIComponents';
+import { apiFetch } from '../api/client';
+import { getFrontendExperiments } from '../api/fulltests';
 
 const ExperimentInfo = () => {
   const [experimentCode, setExperimentCode] = useState('');
   const [experimentData, setExperimentData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleSearch = (e) => {
+  const resolveId = async (input) => {
+    if (/^\d+$/.test(input)) return input; // numeric id
+    const { results } = await getFrontendExperiments({ search: input, limit: 1, page: 1 });
+    const match = Array.isArray(results) ? results.find(r => r.code === input) || results[0] : null;
+    return match?.pk ?? match?.id ?? input;
+  };
+
+  const handleSearch = async (e) => {
     e.preventDefault();
-    // Simulate fetching experiment data based on experimentCode.
-    // In a real implementation, make an API call here.
-    const dummyData = {
-      gitDiff: `diff --git a/file.js b/file.js
-index 83db48f..bf3b5a1 100644
---- a/file.js
-+++ b/file.js
-@@ -1,4 +1,4 @@
--console.log('Hello World');
-+console.log('Hello, Updated World!');`,
-      gitInfo: "Commit: abcdef12345\nAuthor: Your Name\nDate: 2023-10-10",
-      otherInfo: "Additional experiment info here..."
-    };
-    setExperimentData(dummyData);
+    setIsLoading(true);
+    setError(null);
+    try {
+      const raw = experimentCode.trim();
+      const id = await resolveId(raw);
+      const [gitDiff, gitInfo] = await Promise.all([
+        apiFetch(`/api/fulltests/${id}/git_diff/`),
+        apiFetch(`/api/fulltests/${id}/git_info/`),
+      ]);
+      setExperimentData({
+        gitDiff: gitDiff.success ? gitDiff.content : "Failed to load git diff",
+        gitInfo: gitInfo.success ? gitInfo.content : "Failed to load git info",
+        otherInfo: 'Loaded from backend',
+      });
+      console.log(gitDiff);
+    } catch (e) {
+      setError('Failed to fetch experiment info, make sure the experiment code is correct.');
+      setExperimentData(null);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -32,13 +50,17 @@ index 83db48f..bf3b5a1 100644
           <div style={{ flex: 1 }}>
             <Input 
               type="text" 
-              placeholder="Enter experiment code" 
+              placeholder="Enter experiment id or code" 
               value={experimentCode}
               onChange={(e) => setExperimentCode(e.target.value)}
             />
           </div>
-          <Button type="submit">Search</Button>
+          <Button type="submit" disabled={isLoading}>{isLoading ? 'Loading...' : 'Search'}</Button>
         </form>
+
+        {error && (
+          <div style={{ color: '#E53E3E', marginTop: '12px' }}>{String(error)}</div>
+        )}
 
         {experimentData && (
           <div style={{ marginTop: '24px' }}>

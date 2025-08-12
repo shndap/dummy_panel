@@ -1,6 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { PageContainer, PageHeader, Card, Input, Select, Button } from './shared/UIComponents';
-import { experiments } from '../data/experiments';
+import { getFrontendExperiments, patchFulltest, addImprovementType, removeImprovementType } from '../api/fulltests';
+
+function parseMaybeJSON(value, fallback) {
+  if (value == null) return fallback;
+  if (typeof value !== 'string') return value;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function ensureArray(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    return value.split(',').map(s => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+function normalizeExperiment(exp) {
+  const financial = parseMaybeJSON(exp.financial, exp.financial || {});
+  const mlMetrics = parseMaybeJSON(exp.mlMetrics, exp.mlMetrics || {});
+  const metrics = parseMaybeJSON(exp.metrics, exp.metrics || {});
+  const rawImprovements = exp.improvements != null ? exp.improvements : exp.improvement_type;
+  return {
+    ...exp,
+    tags: ensureArray(exp.tags),
+    improvements: ensureArray(rawImprovements),
+    financial,
+    mlMetrics,
+    metrics,
+  };
+}
 
 const ExperimentList = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -13,6 +47,8 @@ const ExperimentList = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedTags, setSelectedTags] = useState([]);
+  const [experiments, setExperiments] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
   
   // Edit modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -21,62 +57,64 @@ const ExperimentList = () => {
     code: '',
     description: '',
     author: '',
-    status: 'valid',
+    status: '',
+    is_valid: true,
     tags: [],
-    improvements: []
+    improvement_types: []
   });
 
-  // Get all unique tags for filtering
-  const allTags = [...new Set(experiments.flatMap(exp => exp.tags))].sort();
+  useEffect(() => {
+    const controller = new AbortController();
+    async function load() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const { results, count } = await getFrontendExperiments({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm || undefined,
+          filterType: filterType === 'all' ? undefined : filterType,
+          sortBy: sortConfig.key,
+          sortOrder: sortConfig.direction,
+          tags: selectedTags.join(',') || undefined,
+        });
+        const normalized = (results || []).map(normalizeExperiment);
+        setExperiments(normalized);
+        setTotalCount(typeof count === 'number' ? count : normalized.length);
+      } catch (e) {
+        setError(e.data || e.message || 'Failed to load experiments');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    load();
+    return () => controller.abort();
+  }, [currentPage, itemsPerPage, searchTerm, filterType, sortConfig.key, sortConfig.direction, selectedTags]);
 
-  // Filter experiments
-  const filteredExperiments = experiments
-    .filter(exp => 
-      exp.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exp.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exp.description.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .filter(exp => {
-      if (filterType === 'all') return true;
-      if (filterType === 'invalid') return exp.status === 'invalid';
-      if (filterType === 'no_improvement') return exp.improvements.length === 0 && exp.status !== 'invalid';
-      return exp.improvements.includes(filterType);
-    })
-    .filter(exp => {
-      if (selectedTags.length === 0) return true;
-      return selectedTags.some(tag => exp.tags.includes(tag));
+  const allTags = useMemo(() => {
+    const tagSet = new Set();
+    for (const exp of experiments) {
+      ensureArray(exp.tags).forEach(t => tagSet.add(t));
+    }
+    return Array.from(tagSet).sort();
+  }, [experiments]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / itemsPerPage));
+  const paginatedExperiments = experiments;
+
+  const sortedExperiments = useMemo(() => {
+    // Backend already sorts, but keep client-side as a fallback
+    const arr = [...paginatedExperiments];
+    const { key, direction } = sortConfig;
+    return arr.sort((a, b) => {
+      const dir = direction === 'asc' ? 1 : -1;
+      if (key === 'date') return (new Date(a.date) - new Date(b.date)) * dir;
+      if (key === 'pnl') return ((a.financial?.pnl ?? 0) - (b.financial?.pnl ?? 0)) * dir;
+      if (key === 'winRate') return ((a.financial?.winRate ?? 0) - (b.financial?.winRate ?? 0)) * dir;
+      if (key === 'precision') return ((a.mlMetrics?.precision ?? 0) - (b.mlMetrics?.precision ?? 0)) * dir;
+      return 0;
     });
-
-  // Pagination
-  const totalPages = Math.ceil(filteredExperiments.length / itemsPerPage);
-  const paginatedExperiments = filteredExperiments.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const sortedExperiments = [...paginatedExperiments].sort((a, b) => {
-    if (sortConfig.key === 'date') {
-      return sortConfig.direction === 'asc' 
-        ? new Date(a.date) - new Date(b.date)
-        : new Date(b.date) - new Date(a.date);
-    }
-    if (sortConfig.key === 'pnl') {
-      return sortConfig.direction === 'asc' 
-        ? a.financial.pnl - b.financial.pnl
-        : b.financial.pnl - a.financial.pnl;
-    }
-    if (sortConfig.key === 'winRate') {
-      return sortConfig.direction === 'asc' 
-        ? a.financial.winRate - b.financial.winRate
-        : b.financial.winRate - a.financial.winRate;
-    }
-    if (sortConfig.key === 'precision') {
-      return sortConfig.direction === 'asc' 
-        ? a.mlMetrics.precision - b.mlMetrics.precision
-        : b.mlMetrics.precision - a.mlMetrics.precision;
-    }
-    // Add other sort cases
-  });
+  }, [paginatedExperiments, sortConfig]);
 
   const TagBadge = ({ tag, onClick, selected }) => (
     <span
@@ -124,7 +162,9 @@ const ExperimentList = () => {
       );
     }
 
-    if (improvements.length === 0) {
+    const improvementList = ensureArray(improvements);
+
+    if (improvementList.length === 0) {
       return (
         <span style={{
           padding: '4px 8px',
@@ -141,7 +181,7 @@ const ExperimentList = () => {
 
     return (
       <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-        {improvements.map((imp, index) => (
+        {improvementList.map((imp, index) => (
           <span
             key={index}
             style={{
@@ -238,37 +278,45 @@ const ExperimentList = () => {
       'Val Precision', 'Val Recall', 'Val F1', 'Val Accuracy',
       'Profit Factor', 'Calmar Ratio', 'Sortino Ratio'
     ];
-    const data = filteredExperiments.map(exp => [
-      exp.code,
-      exp.date,
-      exp.author,
-      exp.description,
-      exp.status,
-      exp.tags.join(';'),
-      exp.financial.pnl.toFixed(2),
-      exp.financial.profit.toFixed(2),
-      exp.financial.loss.toFixed(2),
-      (exp.financial.winRate * 100).toFixed(1) + '%',
-      exp.financial.totalTrades,
-      exp.financial.sharpeRatio.toFixed(3),
-      (exp.financial.maxDrawdown * 100).toFixed(1) + '%',
-      exp.financial.pnlQ1.toFixed(2),
-      exp.financial.pnlQ2.toFixed(2),
-      exp.financial.pnlQ3.toFixed(2),
-      exp.financial.pnlQ4.toFixed(2),
-      (exp.mlMetrics.precision * 100).toFixed(1) + '%',
-      (exp.mlMetrics.recall * 100).toFixed(1) + '%',
-      (exp.mlMetrics.f1Score * 100).toFixed(1) + '%',
-      (exp.mlMetrics.accuracy * 100).toFixed(1) + '%',
-      (exp.mlMetrics.validationPrecision * 100).toFixed(1) + '%',
-      (exp.mlMetrics.validationRecall * 100).toFixed(1) + '%',
-      (exp.mlMetrics.validationF1 * 100).toFixed(1) + '%',
-      (exp.mlMetrics.validationAccuracy * 100).toFixed(1) + '%',
-      exp.financial.profitFactor.toFixed(2),
-      exp.financial.calmarRatio.toFixed(3),
-      exp.financial.sortinoRatio.toFixed(3)
-    ]);
-    
+
+    const toPercent = (v) => v == null ? '' : `${(v * 100).toFixed(1)}%`;
+    const safe = (v) => (v == null ? '' : String(v));
+
+    const data = experiments.map(exp => {
+      const fin = typeof exp.financial === 'string' ? JSON.parse(exp.financial) : (exp.financial || {});
+      const ml = typeof exp.mlMetrics === 'string' ? JSON.parse(exp.mlMetrics) : (exp.mlMetrics || {});
+      return [
+        exp.code,
+        exp.date,
+        exp.author,
+        exp.description,
+        exp.status,
+        Array.isArray(exp.tags) ? exp.tags.join(';') : safe(exp.tags),
+        safe(fin.pnl?.toFixed ? fin.pnl.toFixed(2) : fin.pnl),
+        safe(fin.profit?.toFixed ? fin.profit.toFixed(2) : fin.profit),
+        safe(fin.loss?.toFixed ? fin.loss.toFixed(2) : fin.loss),
+        toPercent(fin.winRate),
+        safe(fin.totalTrades),
+        safe(fin.sharpeRatio?.toFixed ? fin.sharpeRatio.toFixed(3) : fin.sharpeRatio),
+        fin.maxDrawdown != null ? `${(fin.maxDrawdown * 100).toFixed(1)}%` : '',
+        safe(fin.pnlQ1),
+        safe(fin.pnlQ2),
+        safe(fin.pnlQ3),
+        safe(fin.pnlQ4),
+        toPercent(ml.precision),
+        toPercent(ml.recall),
+        toPercent(ml.f1Score),
+        toPercent(ml.accuracy),
+        toPercent(ml.validationPrecision),
+        toPercent(ml.validationRecall),
+        toPercent(ml.validationF1),
+        toPercent(ml.validationAccuracy),
+        safe(fin.profitFactor?.toFixed ? fin.profitFactor.toFixed(2) : fin.profitFactor),
+        safe(fin.calmarRatio?.toFixed ? fin.calmarRatio.toFixed(3) : fin.calmarRatio),
+        safe(fin.sortinoRatio?.toFixed ? fin.sortinoRatio.toFixed(3) : fin.sortinoRatio),
+      ];
+    });
+
     const csvContent = [headers, ...data]
       .map(row => row.join(','))
       .join('\n');
@@ -293,13 +341,15 @@ const ExperimentList = () => {
   // Edit modal functions
   const openEditModal = (experiment) => {
     setEditingExperiment(experiment);
+    console.log('Editting:', experiment);
     setEditForm({
       code: experiment.code,
       description: experiment.description,
       author: experiment.author,
-      status: experiment.status,
+      status: experiment.status || '',
+      is_valid: experiment.is_valid === undefined ? true : !!experiment.is_valid,
       tags: [...experiment.tags],
-      improvements: [...experiment.improvements]
+      improvement_types: ensureArray(experiment.improvements)
     });
     setIsEditModalOpen(true);
   };
@@ -311,9 +361,10 @@ const ExperimentList = () => {
       code: '',
       description: '',
       author: '',
-      status: 'valid',
+      status: '',
+      is_valid: true,
       tags: [],
-      improvements: []
+      improvement_types: []
     });
   };
 
@@ -336,9 +387,9 @@ const ExperimentList = () => {
   const handleImprovementToggle = (improvement) => {
     setEditForm(prev => ({
       ...prev,
-      improvements: prev.improvements.includes(improvement)
-        ? prev.improvements.filter(imp => imp !== improvement)
-        : [...prev.improvements, improvement]
+      improvement_types: prev.improvement_types.includes(improvement)
+        ? prev.improvement_types.filter(imp => imp !== improvement)
+        : [...prev.improvement_types, improvement]
     }));
   };
 
@@ -351,22 +402,48 @@ const ExperimentList = () => {
     }
   };
 
-  const saveExperiment = () => {
+  const saveExperiment = async () => {
     if (!editingExperiment) return;
-    
-    // Here you would typically save to your backend
-    // For now, we'll just update the local experiments array
-    const experimentIndex = experiments.findIndex(exp => exp.id === editingExperiment.id);
-    if (experimentIndex !== -1) {
-      experiments[experimentIndex] = {
-        ...experiments[experimentIndex],
-        ...editForm
-      };
+
+    try {
+      const entityId = editingExperiment.pk ?? editingExperiment.id;
+      const VALID_STATUS = ['created', 'running', 'completed', 'failed', 'stopped'];
+
+      const patchBody = { description: editForm.description, is_valid: !!editForm.is_valid };
+      if (VALID_STATUS.includes(editForm.status)) {
+        patchBody.status = editForm.status;
+      }
+
+      await patchFulltest(entityId, patchBody);
+
+      const before = Array.isArray(editingExperiment.improvements) ? editingExperiment.improvements : String(editingExperiment.improvements || '').split(',').map(s => s.trim()).filter(Boolean);
+      const after = Array.isArray(editForm.improvement_types) ? editForm.improvement_types : String(editForm.improvement_types || '').split(',').map(s => s.trim()).filter(Boolean);
+      const toAdd = after.filter(x => !before.includes(x));
+      const toRemove = before.filter(x => !after.includes(x));
+
+      await Promise.all([
+        ...toAdd.map(type => addImprovementType(entityId, type)),
+        ...toRemove.map(type => removeImprovementType(entityId, type)),
+      ]);
+      console.log(editForm);
+
+      setExperiments(prev => prev.map(exp => {
+        if ((exp.pk ?? exp.id) !== entityId) return exp;
+        const updated = { ...exp };
+        updated.description = editForm.description;
+        if (VALID_STATUS.includes(editForm.status)) {
+          updated.status = editForm.status;
+        }
+        updated.is_valid = !!editForm.is_valid;
+        updated.improvements = after;
+        delete updated.improvement_types;
+        return normalizeExperiment(updated);
+      }));
+    } catch (e) {
+      alert(`Failed to save: ${e.data ? JSON.stringify(e.data) : e.message}`);
+    } finally {
+      closeEditModal();
     }
-    
-    closeEditModal();
-    // Force re-render by updating a state
-    setCurrentPage(currentPage);
   };
 
   return (
@@ -397,9 +474,9 @@ const ExperimentList = () => {
             <option value="all">All Types</option>
             <option value="invalid">Invalid Experiments</option>
             <option value="no_improvement">No Improvement</option>
-            <option value="Open">Open Improvements</option>
-            <option value="Close">Close Improvements</option>
-            <option value="Reg">Reg Improvements</option>
+            <option value="Open">Open Improvement</option>
+            <option value="Close">Close Improvement</option>
+            <option value="Reg">Reg Improvement</option>
           </Select>
           <div style={{ display: 'flex', gap: '8px' }}>
             <Button 
@@ -482,7 +559,7 @@ const ExperimentList = () => {
         }}>
           <QuickFilter 
             label="All"
-            count={experiments.length}
+            count={totalCount}
             active={filterType === 'all'}
             onClick={() => setFilterType('all')}
           />
@@ -494,13 +571,13 @@ const ExperimentList = () => {
           />
           <QuickFilter 
             label="Profitable"
-            count={experiments.filter(e => e.financial.pnl > 0).length}
+            count={experiments.filter(e => e.financial?.pnl > 0).length}
             active={false}
             onClick={() => {}}
           />
           <QuickFilter 
             label="High Win Rate"
-            count={experiments.filter(e => e.financial.winRate > 0.6).length}
+            count={experiments.filter(e => e.financial?.winRate > 0.6).length}
             active={false}
             onClick={() => {}}
           />
@@ -570,7 +647,7 @@ const ExperimentList = () => {
                   <th style={{ ...thStyle }}>Description</th>
                   <th style={{ ...thStyle }}>Tags</th>
                   <th style={{ ...thStyle }}>Metrics</th>
-                  <th style={{ ...thStyle }}>Improvements</th>
+                  <th style={{ ...thStyle }}>Improvement Types</th>
                   <th style={{ ...thStyle }}>Actions</th>
                 </tr>
               </thead>
@@ -798,45 +875,45 @@ const ExperimentList = () => {
                     </td>
                     <td style={{ 
                       ...tdStyle, 
-                      color: exp.financial.pnl > 0 ? '#38A169' : '#E53E3E',
+                      color: exp.financial?.pnl > 0 ? '#38A169' : '#E53E3E',
                       fontWeight: '600'
                     }}>
-                      ${exp.financial.pnl.toFixed(2)}
+                      ${exp.financial?.pnl?.toFixed(2) || '0.00'}
                     </td>
                     <td style={{ ...tdStyle, color: '#38A169' }}>
-                      ${exp.financial.profit.toFixed(2)}
+                      ${exp.financial?.profit?.toFixed(2) || '0.00'}
                     </td>
                     <td style={{ ...tdStyle, color: '#E53E3E' }}>
-                      ${exp.financial.loss.toFixed(2)}
+                      ${exp.financial?.loss?.toFixed(2) || '0.00'}
                     </td>
-                    <td style={tdStyle}>{exp.financial.totalTrades}</td>
+                    <td style={tdStyle}>{exp.financial?.totalTrades || 0}</td>
                     <td style={tdStyle}>
                       <span style={{
-                        color: exp.financial.winRate > 0.6 ? '#38A169' : 
-                               exp.financial.winRate > 0.4 ? '#D69E2E' : '#E53E3E',
+                        color: exp.financial?.winRate > 0.6 ? '#38A169' : 
+                               exp.financial?.winRate > 0.4 ? '#D69E2E' : '#E53E3E',
                         fontWeight: '600'
                       }}>
-                        {(exp.financial.winRate * 100).toFixed(1)}%
+                        {(exp.financial?.winRate * 100).toFixed(1) || '0.0'}%
                       </span>
                     </td>
                     <td style={{ ...tdStyle, color: '#38A169' }}>
-                      ${exp.financial.avgWin.toFixed(2)}
+                      ${exp.financial?.avgWin?.toFixed(2) || '0.00'}
                     </td>
                     <td style={{ ...tdStyle, color: '#E53E3E' }}>
-                      ${exp.financial.avgLoss.toFixed(2)}
+                      ${exp.financial?.avgLoss?.toFixed(2) || '0.00'}
                     </td>
                     <td style={{ 
                       ...tdStyle, 
-                      color: exp.financial.sharpeRatio > 1 ? '#38A169' : 
-                             exp.financial.sharpeRatio > 0 ? '#D69E2E' : '#E53E3E'
+                      color: exp.financial?.sharpeRatio > 1 ? '#38A169' : 
+                             exp.financial?.sharpeRatio > 0 ? '#D69E2E' : '#E53E3E'
                     }}>
-                      {exp.financial.sharpeRatio.toFixed(3)}
+                      {exp.financial?.sharpeRatio?.toFixed(3) || '0.000'}
                     </td>
                     <td style={{ ...tdStyle, color: '#E53E3E' }}>
-                      {(exp.financial.maxDrawdown * 100).toFixed(1)}%
+                      {(exp.financial?.maxDrawdown * 100).toFixed(1) || '0.0'}%
                     </td>
                     <td style={tdStyle}>
-                      {(exp.financial.volatility * 100).toFixed(1)}%
+                      {(exp.financial?.volatility * 100).toFixed(1) || '0.0'}%
                     </td>
                     <td style={tdStyle}>
                       <div style={{ display: 'flex', gap: '8px' }}>
@@ -986,134 +1063,134 @@ const ExperimentList = () => {
                     {/* Financial Metrics */}
                     <td style={{ 
                       ...tdStyle, 
-                      color: exp.financial.pnl > 0 ? '#38A169' : '#E53E3E',
+                      color: exp.financial?.pnl > 0 ? '#38A169' : '#E53E3E',
                       fontWeight: '600'
                     }}>
-                      ${exp.financial.pnl.toFixed(2)}
+                      ${exp.financial?.pnl?.toFixed(2) || '0.00'}
                     </td>
                     <td style={{ 
                       ...tdStyle, 
-                      color: exp.financial.pnlQ1 > 0 ? '#38A169' : '#E53E3E'
+                      color: exp.financial?.pnlQ1 > 0 ? '#38A169' : '#E53E3E'
                     }}>
-                      ${exp.financial.pnlQ1.toFixed(2)}
+                      ${exp.financial?.pnlQ1?.toFixed(2) || '0.00'}
                     </td>
                     <td style={{ 
                       ...tdStyle, 
-                      color: exp.financial.pnlQ2 > 0 ? '#38A169' : '#E53E3E'
+                      color: exp.financial?.pnlQ2 > 0 ? '#38A169' : '#E53E3E'
                     }}>
-                      ${exp.financial.pnlQ2.toFixed(2)}
+                      ${exp.financial?.pnlQ2?.toFixed(2) || '0.00'}
                     </td>
                     <td style={{ 
                       ...tdStyle, 
-                      color: exp.financial.pnlQ3 > 0 ? '#38A169' : '#E53E3E'
+                      color: exp.financial?.pnlQ3 > 0 ? '#38A169' : '#E53E3E'
                     }}>
-                      ${exp.financial.pnlQ3.toFixed(2)}
+                      ${exp.financial?.pnlQ3?.toFixed(2) || '0.00'}
                     </td>
                     <td style={{ 
                       ...tdStyle, 
-                      color: exp.financial.pnlQ4 > 0 ? '#38A169' : '#E53E3E'
+                      color: exp.financial?.pnlQ4 > 0 ? '#38A169' : '#E53E3E'
                     }}>
-                      ${exp.financial.pnlQ4.toFixed(2)}
+                      ${exp.financial?.pnlQ4?.toFixed(2) || '0.00'}
                     </td>
                     <td style={tdStyle}>
                       <span style={{
-                        color: exp.financial.winRate > 0.6 ? '#38A169' : 
-                               exp.financial.winRate > 0.4 ? '#D69E2E' : '#E53E3E',
+                        color: exp.financial?.winRate > 0.6 ? '#38A169' : 
+                               exp.financial?.winRate > 0.4 ? '#D69E2E' : '#E53E3E',
                         fontWeight: '600'
                       }}>
-                        {(exp.financial.winRate * 100).toFixed(1)}%
+                        {(exp.financial?.winRate * 100).toFixed(1) || '0.0'}%
                       </span>
                     </td>
                     <td style={{ 
                       ...tdStyle, 
-                      color: exp.financial.sharpeRatio > 1 ? '#38A169' : 
-                             exp.financial.sharpeRatio > 0 ? '#D69E2E' : '#E53E3E'
+                      color: exp.financial?.sharpeRatio > 1 ? '#38A169' : 
+                             exp.financial?.sharpeRatio > 0 ? '#D69E2E' : '#E53E3E'
                     }}>
-                      {exp.financial.sharpeRatio.toFixed(3)}
+                      {exp.financial?.sharpeRatio?.toFixed(3) || '0.000'}
                     </td>
                     <td style={{ ...tdStyle, color: '#E53E3E' }}>
-                      {(exp.financial.maxDrawdown * 100).toFixed(1)}%
+                      {(exp.financial?.maxDrawdown * 100).toFixed(1) || '0.0'}%
                     </td>
                     <td style={{ 
                       ...tdStyle, 
-                      color: exp.financial.profitFactor > 1.5 ? '#38A169' : 
-                             exp.financial.profitFactor > 1 ? '#D69E2E' : '#E53E3E'
+                      color: exp.financial?.profitFactor > 1.5 ? '#38A169' : 
+                             exp.financial?.profitFactor > 1 ? '#D69E2E' : '#E53E3E'
                     }}>
-                      {exp.financial.profitFactor.toFixed(2)}
+                      {exp.financial?.profitFactor?.toFixed(2) || '0.00'}
                     </td>
                     <td style={{ 
                       ...tdStyle, 
-                      color: exp.financial.calmarRatio > 0.5 ? '#38A169' : 
-                             exp.financial.calmarRatio > 0 ? '#D69E2E' : '#E53E3E'
+                      color: exp.financial?.calmarRatio > 0.5 ? '#38A169' : 
+                             exp.financial?.calmarRatio > 0 ? '#D69E2E' : '#E53E3E'
                     }}>
-                      {exp.financial.calmarRatio.toFixed(3)}
+                      {exp.financial?.calmarRatio?.toFixed(3) || '0.000'}
                     </td>
                     <td style={{ 
                       ...tdStyle, 
-                      color: exp.financial.sortinoRatio > 1 ? '#38A169' : 
-                             exp.financial.sortinoRatio > 0 ? '#D69E2E' : '#E53E3E'
+                      color: exp.financial?.sortinoRatio > 1 ? '#38A169' : 
+                             exp.financial?.sortinoRatio > 0 ? '#D69E2E' : '#E53E3E'
                     }}>
-                      {exp.financial.sortinoRatio.toFixed(3)}
+                      {exp.financial?.sortinoRatio?.toFixed(3) || '0.000'}
                     </td>
                     
                     {/* ML Metrics */}
                     <td style={{ 
                       ...tdStyle, 
-                      color: exp.mlMetrics.precision > 0.7 ? '#38A169' : 
-                             exp.mlMetrics.precision > 0.5 ? '#D69E2E' : '#E53E3E'
+                      color: exp.mlMetrics?.precision > 0.7 ? '#38A169' : 
+                             exp.mlMetrics?.precision > 0.5 ? '#D69E2E' : '#E53E3E'
                     }}>
-                      {(exp.mlMetrics.precision * 100).toFixed(1)}%
+                      {(exp.mlMetrics?.precision * 100).toFixed(1) || '0.0'}%
                     </td>
                     <td style={{ 
                       ...tdStyle, 
-                      color: exp.mlMetrics.recall > 0.7 ? '#38A169' : 
-                             exp.mlMetrics.recall > 0.5 ? '#D69E2E' : '#E53E3E'
+                      color: exp.mlMetrics?.recall > 0.7 ? '#38A169' : 
+                             exp.mlMetrics?.recall > 0.5 ? '#D69E2E' : '#E53E3E'
                     }}>
-                      {(exp.mlMetrics.recall * 100).toFixed(1)}%
+                      {(exp.mlMetrics?.recall * 100).toFixed(1) || '0.0'}%
                     </td>
                     <td style={{ 
                       ...tdStyle, 
-                      color: exp.mlMetrics.f1Score > 0.7 ? '#38A169' : 
-                             exp.mlMetrics.f1Score > 0.5 ? '#D69E2E' : '#E53E3E'
+                      color: exp.mlMetrics?.f1Score > 0.7 ? '#38A169' : 
+                             exp.mlMetrics?.f1Score > 0.5 ? '#D69E2E' : '#E53E3E'
                     }}>
-                      {(exp.mlMetrics.f1Score * 100).toFixed(1)}%
+                      {(exp.mlMetrics?.f1Score * 100).toFixed(1) || '0.0'}%
                     </td>
                     <td style={{ 
                       ...tdStyle, 
-                      color: exp.mlMetrics.accuracy > 0.7 ? '#38A169' : 
-                             exp.mlMetrics.accuracy > 0.5 ? '#D69E2E' : '#E53E3E'
+                      color: exp.mlMetrics?.accuracy > 0.7 ? '#38A169' : 
+                             exp.mlMetrics?.accuracy > 0.5 ? '#D69E2E' : '#E53E3E'
                     }}>
-                      {(exp.mlMetrics.accuracy * 100).toFixed(1)}%
+                      {(exp.mlMetrics?.accuracy * 100).toFixed(1) || '0.0'}%
                     </td>
                     
                     {/* Validation Metrics */}
                     <td style={{ 
                       ...tdStyle, 
-                      color: exp.mlMetrics.validationPrecision > 0.7 ? '#38A169' : 
-                             exp.mlMetrics.validationPrecision > 0.5 ? '#D69E2E' : '#E53E3E'
+                      color: exp.mlMetrics?.validationPrecision > 0.7 ? '#38A169' : 
+                             exp.mlMetrics?.validationPrecision > 0.5 ? '#D69E2E' : '#E53E3E'
                     }}>
-                      {(exp.mlMetrics.validationPrecision * 100).toFixed(1)}%
+                      {(exp.mlMetrics?.validationPrecision * 100).toFixed(1) || '0.0'}%
                     </td>
                     <td style={{ 
                       ...tdStyle, 
-                      color: exp.mlMetrics.validationRecall > 0.7 ? '#38A169' : 
-                             exp.mlMetrics.validationRecall > 0.5 ? '#D69E2E' : '#E53E3E'
+                      color: exp.mlMetrics?.validationRecall > 0.7 ? '#38A169' : 
+                             exp.mlMetrics?.validationRecall > 0.5 ? '#D69E2E' : '#E53E3E'
                     }}>
-                      {(exp.mlMetrics.validationRecall * 100).toFixed(1)}%
+                      {(exp.mlMetrics?.validationRecall * 100).toFixed(1) || '0.0'}%
                     </td>
                     <td style={{ 
                       ...tdStyle, 
-                      color: exp.mlMetrics.validationF1 > 0.7 ? '#38A169' : 
-                             exp.mlMetrics.validationF1 > 0.5 ? '#D69E2E' : '#E53E3E'
+                      color: exp.mlMetrics?.validationF1 > 0.7 ? '#38A169' : 
+                             exp.mlMetrics?.validationF1 > 0.5 ? '#D69E2E' : '#E53E3E'
                     }}>
-                      {(exp.mlMetrics.validationF1 * 100).toFixed(1)}%
+                      {(exp.mlMetrics?.validationF1 * 100).toFixed(1) || '0.0'}%
                     </td>
                     <td style={{ 
                       ...tdStyle, 
-                      color: exp.mlMetrics.validationAccuracy > 0.7 ? '#38A169' : 
-                             exp.mlMetrics.validationAccuracy > 0.5 ? '#D69E2E' : '#E53E3E'
+                      color: exp.mlMetrics?.validationAccuracy > 0.7 ? '#38A169' : 
+                             exp.mlMetrics?.validationAccuracy > 0.5 ? '#D69E2E' : '#E53E3E'
                     }}>
-                      {(exp.mlMetrics.validationAccuracy * 100).toFixed(1)}%
+                      {(exp.mlMetrics?.validationAccuracy * 100).toFixed(1) || '0.0'}%
                     </td>
                     
                     <td style={tdStyle}>
@@ -1321,8 +1398,25 @@ const ExperimentList = () => {
                   value={editForm.status}
                   onChange={(e) => handleEditFormChange('status', e.target.value)}
                 >
-                  <option value="valid">Valid</option>
-                  <option value="invalid">Invalid</option>
+                  <option value="">(no change)</option>
+                  <option value="created">Created</option>
+                  <option value="running">Running</option>
+                  <option value="completed">Completed</option>
+                  <option value="failed">Failed</option>
+                  <option value="stopped">Stopped</option>
+                </Select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#4A5568' }}>
+                  Validity
+                </label>
+                <Select
+                  value={editForm.is_valid ? 'true' : 'false'}
+                  onChange={(e) => handleEditFormChange('is_valid', e.target.value === 'true')}
+                >
+                  <option value="true">Valid</option>
+                  <option value="false">Invalid</option>
                 </Select>
               </div>
 
@@ -1372,10 +1466,10 @@ const ExperimentList = () => {
                 )}
               </div>
 
-              {/* Improvements */}
+              {/* Improvement Types */}
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#4A5568' }}>
-                  Improvements
+                  Improvement Types
                 </label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', alignItems: 'flex-start' }}>
                   {['Open', 'Close', 'Reg'].map(imp => (
@@ -1387,8 +1481,8 @@ const ExperimentList = () => {
                         borderRadius: '16px',
                         fontSize: '12px',
                         fontWeight: '500',
-                        backgroundColor: editForm.improvements.includes(imp) ? '#3182CE' : '#EDF2F7',
-                        color: editForm.improvements.includes(imp) ? 'white' : '#4A5568',
+                        backgroundColor: editForm.improvement_types.includes(imp) ? '#3182CE' : '#EDF2F7',
+                        color: editForm.improvement_types.includes(imp) ? 'white' : '#4A5568',
                         cursor: 'pointer',
                         border: '1px solid #E2E8F0',
                         transition: 'all 0.2s ease',
@@ -1399,9 +1493,9 @@ const ExperimentList = () => {
                     </span>
                   ))}
                 </div>
-                {editForm.improvements.length > 0 && (
+                {editForm.improvement_types.length > 0 && (
                   <div style={{ fontSize: '12px', color: '#718096', marginTop: '8px' }}>
-                    Selected: {editForm.improvements.join(', ')}
+                    Selected: {editForm.improvement_types.join(', ')}
                   </div>
                 )}
               </div>

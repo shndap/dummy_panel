@@ -1,0 +1,1444 @@
+openapi: 3.0.3
+info:
+  title: Trader Dashboard API
+  version: 1.0.0
+  description: API for managing trading experiments and viewing dashboard data
+  contact:
+    name: Trader Dashboard Team
+    email: support@trader-dashboard.com
+  license:
+    name: MIT License
+    url: https://opensource.org/licenses/MIT
+paths:
+  /api/auth/:
+    post:
+      operationId: auth_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AuthTokenRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AuthTokenRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthTokenRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthToken'
+          description: ''
+  /api/dashboard/cache_stats/:
+    get:
+      operationId: dashboard_cache_stats_retrieve
+      description: Retrieve cache statistics and performance metrics
+      summary: Get cache statistics
+      tags:
+      - dashboard
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                description: Cache statistics
+                examples:
+                - name: success_response
+                  summary: Cache statistics
+                  value:
+                    cache_backend: redis
+                    cache_config:
+                      EXPERIMENT_DATA_TIMEOUT: 1800
+                      GOALS_DATA_TIMEOUT: 1800
+                    cache_keys:
+                    - experiment_data
+                    - goals_data
+          description: ''
+  /api/dashboard/clear_cache/:
+    post:
+      operationId: dashboard_clear_cache_create
+      description: Clear all data caches to force fresh data loading on next request
+      summary: Clear data cache
+      tags:
+      - dashboard
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                description: Cache cleared successfully
+                examples:
+                - name: success_response
+                  summary: Cache cleared
+                  value:
+                    status: success
+                    message: Data cache cleared successfully
+          description: ''
+  /api/dashboard/data_table/:
+    get:
+      operationId: dashboard_data_table_retrieve
+      description: Retrieve paginated experiment data with sorting and filtering capabilities
+      summary: Get experiment data table
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+          default: 1
+        description: 'Page number (default: 1)'
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+          default: 50
+        description: 'Number of records per page (default: 50)'
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Search term to filter records
+      - in: query
+        name: sort_by
+        schema:
+          type: string
+          default: index
+        description: 'Column to sort by (default: index)'
+      - in: query
+        name: sort_order
+        schema:
+          type: string
+          default: asc
+        description: 'Sort order: asc or desc (default: asc)'
+      tags:
+      - dashboard
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                description: Paginated experiment data
+                examples:
+                - name: success_response
+                  summary: Successful data table response
+                  value:
+                    data:
+                    - index: experiment_1
+                      dir_name: Test_Experiment_20241201
+                      train_precision_openbuy: 0.85
+                      train_precision_opensell: 0.82
+                      test_precision_openbuy: 0.78
+                      test_precision_opensell: 0.75
+                    total: 3857
+                    page: 1
+                    page_size: 50
+                    total_pages: 78
+                    columns:
+                    - dir_name
+                    - train_precision_openbuy
+                    - train_precision_opensell
+          description: ''
+        '500':
+          content:
+            application/json:
+              schema:
+                description: Server error
+                examples:
+                - name: error_response
+                  summary: Error loading data table
+                  value:
+                    error: 'Error loading data table: Data file not found'
+          description: ''
+  /api/dashboard/experiment_comparison/:
+    get:
+      operationId: dashboard_experiment_comparison_retrieve
+      description: Get comparison data between two experiments
+      tags:
+      - dashboard
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/dashboard/experiment_data/:
+    get:
+      operationId: dashboard_experiment_data_retrieve
+      description: Get experiment data for visualization
+      tags:
+      - dashboard
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/dashboard/experiment_parameters/:
+    get:
+      operationId: dashboard_experiment_parameters_retrieve
+      description: Get experiment parameters for a specific experiment
+      tags:
+      - dashboard
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/dashboard/goals_data/:
+    get:
+      operationId: dashboard_goals_data_retrieve
+      description: Get goals data for visualization
+      tags:
+      - dashboard
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/dashboard/goals_table/:
+    get:
+      operationId: dashboard_goals_table_retrieve
+      description: Retrieve paginated goals data with sorting and filtering capabilities
+      summary: Get goals data table
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+          default: 1
+        description: 'Page number (default: 1)'
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+          default: 50
+        description: 'Number of records per page (default: 50)'
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Search term to filter records
+      - in: query
+        name: sort_by
+        schema:
+          type: string
+          default: experiment
+        description: 'Column to sort by (default: experiment)'
+      - in: query
+        name: sort_order
+        schema:
+          type: string
+          default: asc
+        description: 'Sort order: asc or desc (default: asc)'
+      tags:
+      - dashboard
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                description: Paginated goals data
+                examples:
+                - name: success_response
+                  summary: Successful goals table response
+                  value:
+                    data:
+                    - experiment: Test_Experiment_20241201
+                      type: open
+                      valid: true
+                      date: '2024-12-01T10:00:00Z'
+                      value: -15.5
+                    total: 22
+                    page: 1
+                    page_size: 50
+                    total_pages: 1
+                    columns:
+                    - experiment
+                    - type
+                    - valid
+                    - date
+                    - value
+          description: ''
+  /api/dashboard/job_status/:
+    get:
+      operationId: dashboard_job_status_retrieve
+      description: Get current job status and counts
+      tags:
+      - dashboard
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/dashboard/migrate_data/:
+    post:
+      operationId: dashboard_migrate_data_create
+      description: Migrate data from file system to database
+      tags:
+      - dashboard
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/dashboard/parameter_filter_options/:
+    get:
+      operationId: dashboard_parameter_filter_options_retrieve
+      description: Get available parameter options for filtering
+      tags:
+      - dashboard
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/dashboard/parameter_filtered_data/:
+    get:
+      operationId: dashboard_parameter_filtered_data_retrieve
+      description: Get experiment data filtered by parameters
+      tags:
+      - dashboard
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/dashboard/refresh_cache/:
+    post:
+      operationId: dashboard_refresh_cache_create
+      description: Force refresh of specific data cache (experiment, goals, or all)
+      summary: Refresh specific data cache
+      parameters:
+      - in: query
+        name: data_type
+        schema:
+          type: string
+          default: all
+        description: 'Data type to refresh: experiment, goals, or all (default: all)'
+      tags:
+      - dashboard
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                description: Cache refreshed successfully
+                examples:
+                - name: success_response
+                  summary: Cache refreshed
+                  value:
+                    status: success
+                    message: Experiment data cache refreshed successfully
+          description: ''
+  /api/dashboard/summary/:
+    get:
+      operationId: dashboard_summary_retrieve
+      description: Retrieve summary statistics for the dashboard including experiment
+        counts and status breakdown
+      summary: Get dashboard summary
+      tags:
+      - dashboard
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                description: Dashboard summary data
+                examples:
+                - name: success_response
+                  summary: Successful summary response
+                  value:
+                    total_experiments: 150
+                    running_experiments: 5
+                    completed_experiments: 140
+                    failed_experiments: 5
+          description: ''
+  /api/dashboard/table_metadata/:
+    get:
+      operationId: dashboard_table_metadata_retrieve
+      description: Get metadata for data tables including column information and data
+        types
+      summary: Get table metadata
+      parameters:
+      - in: query
+        name: type
+        schema:
+          type: string
+          default: experiment
+        description: 'Table type: experiment or goals (default: experiment)'
+      tags:
+      - dashboard
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                description: Table metadata
+                examples:
+                - name: success_response
+                  summary: Successful metadata response
+                  value:
+                    columns:
+                    - field: dir_name
+                      headerName: Dir Name
+                      type: string
+                      width: 150
+                      sortable: true
+                      filterable: true
+                    total_records: 3857
+                    data_types:
+                      dir_name: object
+                    table_type: experiment
+          description: ''
+  /api/fulltests/:
+    get:
+      operationId: fulltests_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - fulltests
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedExperimentList'
+          description: ''
+    post:
+      operationId: fulltests_create
+      tags:
+      - fulltests
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentCreateRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentCreate'
+          description: ''
+  /api/fulltests/{id}/:
+    get:
+      operationId: fulltests_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - fulltests
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Experiment'
+          description: ''
+    put:
+      operationId: fulltests_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - fulltests
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentUpdateRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentUpdate'
+          description: ''
+    patch:
+      operationId: fulltests_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - fulltests
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedExperimentUpdateRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentUpdate'
+          description: ''
+    delete:
+      operationId: fulltests_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - fulltests
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/fulltests/{id}/add_improvement_type/:
+    post:
+      operationId: fulltests_add_improvement_type_create
+      description: Add improvement type to experiment
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - fulltests
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Experiment'
+          description: ''
+  /api/fulltests/{id}/artifacts/:
+    get:
+      operationId: fulltests_artifacts_retrieve
+      description: List available artifact files under the experiment directory
+      summary: List experiment artifacts
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - experiments
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/fulltests/{id}/git_diff/:
+    get:
+      operationId: fulltests_git_diff_retrieve
+      description: Return git diff for the experiment if available
+      summary: Get experiment git diff
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - experiments
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/fulltests/{id}/git_info/:
+    get:
+      operationId: fulltests_git_info_retrieve
+      description: Return git/commit info for the experiment if available
+      summary: Get experiment git info
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - experiments
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/fulltests/{id}/invalidate/:
+    post:
+      operationId: fulltests_invalidate_create
+      description: Mark experiment as invalid
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - fulltests
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Experiment'
+          description: ''
+  /api/fulltests/{id}/logs/:
+    get:
+      operationId: fulltests_logs_retrieve
+      description: Get experiment logs
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - fulltests
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Experiment'
+          description: ''
+  /api/fulltests/{id}/plot/:
+    get:
+      operationId: fulltests_plot_retrieve
+      description: Get experiment plot data
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - fulltests
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Experiment'
+          description: ''
+  /api/fulltests/{id}/remove_improvement_type/:
+    post:
+      operationId: fulltests_remove_improvement_type_create
+      description: Remove improvement type from experiment
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - fulltests
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Experiment'
+          description: ''
+  /api/fulltests/{id}/script_results/:
+    get:
+      operationId: fulltests_script_results_retrieve
+      description: Get script execution results (output/error) from the Flask API
+      summary: Get script execution results
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - experiments
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                description: Script execution results
+                examples:
+                - name: success_response
+                  summary: Script results retrieved
+                  value:
+                    status: success
+                    data:
+                      experiment_name: Test_Experiment
+                      executed_at: '2024-12-01T10:00:00Z'
+                      script_output: Script executed successfully
+                      script_error: null
+                      has_output: true
+                      has_error: false
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                description: Script not executed
+                examples:
+                - name: error_response
+                  summary: Script not executed
+                  value:
+                    status: error
+                    message: Script has not been executed yet
+          description: ''
+  /api/fulltests/{id}/start/:
+    post:
+      operationId: fulltests_start_create
+      description: Start a trading experiment with normal priority
+      summary: Start experiment
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - experiments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                description: Experiment started successfully
+                examples:
+                - name: success_response
+                  summary: Experiment started
+                  value:
+                    status: success
+                    message: Experiment started successfully
+                    experiment_id: 1
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Failed to start experiment
+                examples:
+                - name: error_response
+                  summary: Start failed
+                  value:
+                    status: error
+                    message: Experiment is already running
+          description: ''
+  /api/fulltests/{id}/start_high_priority/:
+    post:
+      operationId: fulltests_start_high_priority_create
+      description: Start an experiment with high priority
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - fulltests
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Experiment'
+          description: ''
+  /api/fulltests/{id}/stop/:
+    post:
+      operationId: fulltests_stop_create
+      description: Stop an experiment
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - fulltests
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Experiment'
+          description: ''
+  /api/fulltests/{id}/update_metadata/:
+    post:
+      operationId: fulltests_update_metadata_create
+      description: Update experiment metadata
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - fulltests
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Experiment'
+          description: ''
+  /api/fulltests/{id}/validate/:
+    post:
+      operationId: fulltests_validate_create
+      description: Mark experiment as valid
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - fulltests
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Experiment'
+          description: ''
+  /api/fulltests/data/:
+    get:
+      operationId: fulltests_data_retrieve
+      description: Get experiments data
+      tags:
+      - fulltests
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Experiment'
+          description: ''
+  /api/fulltests/frontend_list/:
+    get:
+      operationId: fulltests_frontend_list_list
+      description: Get experiments in the format expected by the frontend
+      summary: Get experiments for frontend
+      parameters:
+      - in: query
+        name: filterType
+        schema:
+          type: string
+        description: 'Filter by type: all, invalid, no_improvement, Open, Close, Reg'
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 10
+        description: 'Items per page (default: 10)'
+      - in: query
+        name: page
+        schema:
+          type: integer
+          default: 1
+        description: 'Page number (default: 1)'
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Search term for code, author, or description
+      - in: query
+        name: sortBy
+        schema:
+          type: string
+        description: 'Sort field: date, pnl, winRate, precision'
+      - in: query
+        name: sortOrder
+        schema:
+          type: string
+        description: 'Sort direction: asc or desc'
+      - in: query
+        name: tags
+        schema:
+          type: string
+        description: Comma-separated list of tags to filter by
+      tags:
+      - experiments
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFrontendExperimentList'
+          description: ''
+  /api/fulltests/metrics_plot/:
+    get:
+      operationId: fulltests_metrics_plot_retrieve
+      description: Get metrics plot data
+      tags:
+      - fulltests
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Experiment'
+          description: ''
+components:
+  schemas:
+    AuthToken:
+      type: object
+      properties:
+        token:
+          type: string
+          readOnly: true
+      required:
+      - token
+    AuthTokenRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - password
+      - username
+    Experiment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        tag:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_valid:
+          type: boolean
+        improvement_types: {}
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        high_priority:
+          type: boolean
+        parameters:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExperimentParameter'
+          readOnly: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExperimentResult'
+          readOnly: true
+        goals:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExperimentGoal'
+          readOnly: true
+      required:
+      - created_at
+      - goals
+      - id
+      - name
+      - parameters
+      - results
+      - updated_at
+    ExperimentCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        tag:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+      required:
+      - name
+    ExperimentCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        tag:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+      required:
+      - name
+    ExperimentGoal:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        goal_type:
+          type: string
+          maxLength: 50
+        value:
+          type: number
+          format: double
+        valid:
+          type: boolean
+        date:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - date
+      - goal_type
+      - id
+      - value
+    ExperimentGoalRequest:
+      type: object
+      properties:
+        goal_type:
+          type: string
+          minLength: 1
+          maxLength: 50
+        value:
+          type: number
+          format: double
+        valid:
+          type: boolean
+      required:
+      - goal_type
+      - value
+    ExperimentParameter:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        param_name:
+          type: string
+          maxLength: 100
+        param_value:
+          type: string
+          maxLength: 255
+      required:
+      - id
+      - param_name
+      - param_value
+    ExperimentParameterRequest:
+      type: object
+      properties:
+        param_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        param_value:
+          type: string
+          minLength: 1
+          maxLength: 255
+      required:
+      - param_name
+      - param_value
+    ExperimentRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        tag:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        is_valid:
+          type: boolean
+        improvement_types: {}
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        high_priority:
+          type: boolean
+      required:
+      - name
+    ExperimentResult:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        metric_name:
+          type: string
+          maxLength: 100
+        metric_value:
+          type: number
+          format: double
+        timestamp:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - id
+      - metric_name
+      - metric_value
+      - timestamp
+    ExperimentResultRequest:
+      type: object
+      properties:
+        metric_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        metric_value:
+          type: number
+          format: double
+      required:
+      - metric_name
+      - metric_value
+    ExperimentUpdate:
+      type: object
+      properties:
+        tag:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        is_valid:
+          type: boolean
+        improvement_types: {}
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+    ExperimentUpdateRequest:
+      type: object
+      properties:
+        tag:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        is_valid:
+          type: boolean
+        improvement_types: {}
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+    FrontendExperiment:
+      type: object
+      properties:
+        id:
+          type: string
+        pk:
+          type: integer
+        code:
+          type: string
+        date:
+          type: string
+          format: date-time
+        author:
+          type: string
+          readOnly: true
+        description:
+          type: string
+        status:
+          type: string
+          readOnly: true
+        tags:
+          type: string
+          readOnly: true
+        improvements:
+          type: string
+          readOnly: true
+        financial:
+          type: string
+          readOnly: true
+        mlMetrics:
+          type: string
+          readOnly: true
+        metrics:
+          type: string
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+      - author
+      - code
+      - createdAt
+      - date
+      - description
+      - financial
+      - id
+      - improvements
+      - metrics
+      - mlMetrics
+      - pk
+      - status
+      - tags
+      - updatedAt
+    PaginatedExperimentList:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Experiment'
+    PaginatedFrontendExperimentList:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/FrontendExperiment'
+    PatchedExperimentUpdateRequest:
+      type: object
+      properties:
+        tag:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        is_valid:
+          type: boolean
+        improvement_types: {}
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+    StatusEnum:
+      enum:
+      - created
+      - running
+      - completed
+      - failed
+      - stopped
+      type: string
+      description: |-
+        * `created` - Created
+        * `running` - Running
+        * `completed` - Completed
+        * `failed` - Failed
+        * `stopped` - Stopped
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+    tokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Token-based authentication with required prefix "Token"
+tags:
+- name: experiments
+  description: Experiment management endpoints
+- name: dashboard
+  description: Dashboard data and visualization endpoints
+- name: rl-experiments
+  description: Reinforcement Learning experiment endpoints

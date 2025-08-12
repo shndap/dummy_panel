@@ -120,7 +120,7 @@ function App() {
               transition: 'opacity 0.3s ease',
             }}>
               <NavLink to="/improvements">
-                <span style={{ fontSize: '18px' }}>📈</span> Improvements
+                <span style={{ fontSize: '18px' }}>📈</span> Improvement Types
               </NavLink>
               <NavLink to="/info">
                 <span style={{ fontSize: '18px' }}>ℹ️</span> Experiment Info
