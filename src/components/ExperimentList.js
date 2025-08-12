@@ -181,7 +181,7 @@ const ExperimentList = () => {
     }
 
     return (
-      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
         {improvementList.map((imp, index) => (
           <span
             key={index}
@@ -619,7 +619,7 @@ const ExperimentList = () => {
             }}>
               <thead>
                 <tr>
-                  <th style={{ ...thStyle, width: '40px' }}>
+                  <th style={{ ...thStyle, maxWidth: '40px' }}>
                     <input
                       type="checkbox"
                       onChange={e => {
@@ -627,7 +627,7 @@ const ExperimentList = () => {
                       }}
                     />
                   </th>
-                  <th style={{ ...thStyle }}>Code</th>
+                  <th style={{ ...thStyle, textAlign: 'left' }}>Code</th>
                   <th 
                     style={{ 
                       ...thStyle, 
@@ -646,7 +646,6 @@ const ExperimentList = () => {
                   <th style={{ ...thStyle }}>Author</th>
                   <th style={{ ...thStyle }}>Description</th>
                   <th style={{ ...thStyle }}>Tags</th>
-                  <th style={{ ...thStyle }}>Metrics</th>
                   <th style={{ ...thStyle }}>Improvements</th>
                   <th style={{ ...thStyle }}>Actions</th>
                 </tr>
@@ -676,48 +675,25 @@ const ExperimentList = () => {
                         }}
                       />
                     </td>
-                    <td style={{ ...tdStyle, fontWeight: '500' }}>{exp.code}</td>
+                    <td style={{ ...tdStyle, fontWeight: '500', textAlign: 'left' }}>{exp.code}</td>
                     <td style={tdStyle}>{new Date(exp.date).toLocaleDateString()}</td>
                     <td style={tdStyle}>{exp.author}</td>
                     <td style={tdStyle}>{exp.description}</td>
                     <td style={tdStyle}>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', maxWidth: '200px', alignItems: 'flex-start' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', alignItems: 'flex-start', width: 'fit-content' }}>
                         {exp.tags.map(tag => (
                           <TagBadge key={tag} tag={tag} />
                         ))}
                       </div>
                     </td>
-                    <td style={{ ...tdStyle }}>
-                      <div style={{ 
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px',
-                      }}>
-                        <MetricGroup 
-                          label="Open" 
-                          metrics={exp.metrics.open}
-                          color="#38A169"
-                        />
-                        <MetricGroup 
-                          label="Close" 
-                          metrics={exp.metrics.close}
-                          color="#E53E3E"
-                        />
-                        <MetricGroup 
-                          label="Reg" 
-                          metrics={exp.metrics.reg}
-                          color="#3182CE"
-                        />
-                      </div>
-                    </td>
-                    <td style={tdStyle}>
+                    <td style={{ ...tdStyle, width: 'fit-content' }}>
                       <ImprovementBadges 
                         improvements={exp.improvements}
                         status={exp.status}
                       />
                     </td>
-                    <td style={tdStyle}>
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                    <td style={{ ...tdStyle, width: 'fit-content' }}>
+                      <div style={{ display: 'flex', gap: '8px', boxSizing: 'border-box', width: 'fit-content' }}>
                         <Button 
                           variant="secondary" 
                           onClick={() => window.location.href = `/comparison?exp=${exp.code}`}
@@ -768,7 +744,7 @@ const ExperimentList = () => {
                       }}
                     />
                   </th>
-                  <th style={{ ...thStyle }}>Code</th>
+                  <th style={{ ...thStyle, textAlign: 'left' }}>Code</th>
                   <th style={{ ...thStyle }}>Date</th>
                   <th style={{ ...thStyle }}>Author</th>
                   <th style={{ ...thStyle }}>Status</th>
@@ -835,7 +811,7 @@ const ExperimentList = () => {
                         }}
                       />
                     </td>
-                    <td style={{ ...tdStyle, fontWeight: '500' }}>{exp.code}</td>
+                    <td style={{ ...tdStyle, fontWeight: '500', textAlign: 'left' }}>{exp.code}</td>
                     <td style={tdStyle}>{new Date(exp.date).toLocaleDateString()}</td>
                     <td style={tdStyle}>{exp.author}</td>
                     <td style={tdStyle}>
@@ -912,7 +888,7 @@ const ExperimentList = () => {
                       {(exp.financial?.volatility * 100).toFixed(1) || '0.0'}%
                     </td>
                     <td style={tdStyle}>
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ display: 'flex', gap: '8px', boxSizing: 'border-box', width: '100%' }}>
                         <Button 
                           variant="secondary" 
                           onClick={() => window.location.href = `/comparison?exp=${exp.code}`}
@@ -964,7 +940,7 @@ const ExperimentList = () => {
                       }}
                     />
                   </th>
-                  <th style={{ ...thStyle }}>Code</th>
+                  <th style={{ ...thStyle, textAlign: 'left' }}>Code</th>
                   <th style={{ ...thStyle }}>Date</th>
                   <th style={{ ...thStyle }}>Status</th>
                   <th style={{ ...thStyle }}>Tags</th>
@@ -1022,7 +998,7 @@ const ExperimentList = () => {
                         }}
                       />
                     </td>
-                    <td style={{ ...tdStyle, fontWeight: '500' }}>{exp.code}</td>
+                    <td style={{ ...tdStyle, fontWeight: '500', textAlign: 'left' }}>{exp.code}</td>
                     <td style={tdStyle}>{new Date(exp.date).toLocaleDateString()}</td>
                     <td style={tdStyle}>
                       <span style={{
@@ -1509,19 +1485,23 @@ const ExperimentList = () => {
 };
 
 const thStyle = {
-  textAlign: 'left',
+  textAlign: 'center',
   padding: '12px 12px',
   fontWeight: 600,
   fontSize: '12px',
   color: '#4A5568',
   borderBottom: '1px solid #E2E8F0',
-  backgroundColor: '#F7FAFC'
+  backgroundColor: '#F7FAFC',
 };
 
 const tdStyle = {
   padding: '12px 12px',
   borderBottom: '1px solid #EDF2F7',
-  color: '#2D3748'
+  color: '#2D3748',
+  textAlign: 'center',
+  width: 'fit-content',
+  alignItems: 'center',
+  justifyContent: 'center',
 };
 
 export default ExperimentList;
