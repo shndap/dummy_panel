@@ -45,7 +45,7 @@ function normalizeExperiment(exp) {
   return {
     ...exp,
     tags: ensureArray(exp.tags),
-    improvements: ensureArray(exp.improvements != null ? exp.improvements : exp.improvement_type),
+    improvements: ensureArray(exp.improvements),
     financial: parseMaybeJSON(exp.financial, exp.financial || {}),
     mlMetrics: parseMaybeJSON(exp.mlMetrics, exp.mlMetrics || {}),
     metrics: parseMaybeJSON(exp.metrics, exp.metrics || {}),
@@ -176,7 +176,7 @@ const ExperimentManager = () => {
         paddingBottom: '10px',
         marginBottom: '20px'
       }}>
-        Experiment Manager (Improvement Types)
+        Experiment Manager (Improvements)
       </h2>
 
       {/* Baseline Cards */}
@@ -196,7 +196,7 @@ const ExperimentManager = () => {
         gap: '20px',
         marginBottom: '20px' 
       }}>
-        {/* Improvement Types List */}
+        {/* Improvements List */}
         <div style={{ 
           background: 'white',
           padding: '20px',

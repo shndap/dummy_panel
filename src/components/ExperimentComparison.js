@@ -19,7 +19,7 @@ function normalizeExperiment(exp) {
     metrics: parseMaybeJSON(exp.metrics, exp.metrics || {}),
     improvements: Array.isArray(exp.improvements) || typeof exp.improvements === 'string'
       ? exp.improvements
-      : (exp.improvement_type ?? []),
+      : [],
   };
 }
 
@@ -58,156 +58,63 @@ const ExperimentComparison = () => {
       const match = Array.isArray(results) ? results.find(r => r.code === code) || results[0] : null;
       setter(match ? normalizeExperiment(match) : null);
     } catch (e) {
-      setter(null);
       setError(e.data || e.message || 'Failed to load experiment');
+      setter(null);
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { loadByCode(selectedExp1, setExp1); }, [selectedExp1]);
-  useEffect(() => { loadByCode(selectedExp2, setExp2); }, [selectedExp2]);
-
-  const MetricComparison = ({ label, metrics1, metrics2, color }) => {
-    if (!metrics1 || !metrics2) return null;
-
-    const renderValue = (key, value) => {
-      if (key === 'mse') return Number(value).toFixed(4);
-      if (key.toLowerCase().includes('highlow')) return `${(Number(value) * 100).toFixed(1)}%`;
-      return value;
-    };
-
-    const getChangeIndicator = (key, value1, value2) => {
-      const v1 = Number(value1);
-      const v2 = Number(value2);
-      const improvement = key === 'mse' ? v2 > v1 : v1 > v2;
-      const denom = key === 'mse' ? v1 : v2;
-      const change = denom ? ((key === 'mse' ? (v2 - v1) / v1 : (v1 - v2) / v2) * 100).toFixed(2) : '0.00';
-      return (
-        <span style={{
-          color: improvement ? '#38A169' : '#E53E3E',
-          fontSize: '12px',
-          marginLeft: '8px',
-        }}>
-          {improvement ? '↑' : '↓'} {Math.abs(Number(change))}%
-        </span>
-      );
-    };
-
-    return (
-      <div style={{
-        padding: '16px',
-        backgroundColor: `${color}10`,
-        borderRadius: '8px',
-        border: `1px solid ${color}30`,
-      }}>
-        <h4 style={{ 
-          color: color, 
-          margin: '0 0 12px 0',
-          fontSize: '16px',
-          fontWeight: '600',
-        }}>
-          {label}
-        </h4>
-        <div style={{ display: 'grid', gap: '12px' }}>
-          {Object.entries(metrics1).map(([key, value1]) => (
-            <div 
-              key={key}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '8px',
-                backgroundColor: 'white',
-                borderRadius: '4px',
-              }}
-            >
-              <div style={{ color: '#4A5568', fontWeight: '500' }}>
-                {key === 'mse' ? 'MSE' : 
-                  key.toLowerCase().includes('highlow') ? 
-                    `High/Low ${key.replace(/highlow/i, '')}` : 
-                    key.charAt(0).toUpperCase() + key.slice(1)}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <span>{renderValue(key, value1)}</span>
-                <span style={{ color: '#A0AEC0' }}>vs</span>
-                <span>{renderValue(key, metrics2[key])}</span>
-                {getChangeIndicator(key, value1, metrics2[key])}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <PageContainer>
       <PageHeader title="Experiment Comparison" />
-      
       <Card>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '16px',
-          marginBottom: '24px',
-        }}>
-          <Select
-            value={selectedExp1}
-            onChange={(e) => setSelectedExp1(e.target.value)}
-            placeholder="Select first experiment"
-          >
-            <option value="">Select Experiment 1</option>
-            {options.map(opt => (
-              <option key={opt.pk ?? opt.id ?? opt.code} value={opt.code}>{opt.code}</option>
-            ))}
-          </Select>
-          <Select
-            value={selectedExp2}
-            onChange={(e) => setSelectedExp2(e.target.value)}
-            placeholder="Select second experiment"
-          >
-            <option value="">Select Experiment 2</option>
-            {options.map(opt => (
-              <option key={opt.pk ?? opt.id ?? opt.code} value={opt.code}>{opt.code}</option>
-            ))}
-          </Select>
+        <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+          <div style={{ flex: 1 }}>
+            <label>Experiment 1</label>
+            <Select value={selectedExp1} onChange={(e) => { setSelectedExp1(e.target.value); loadByCode(e.target.value, setExp1); }}>
+              <option value="">Select...</option>
+              {options.map(opt => (
+                <option key={opt.code} value={opt.code}>{opt.code}</option>
+              ))}
+            </Select>
+          </div>
+          <div style={{ flex: 1 }}>
+            <label>Experiment 2</label>
+            <Select value={selectedExp2} onChange={(e) => { setSelectedExp2(e.target.value); loadByCode(e.target.value, setExp2); }}>
+              <option value="">Select...</option>
+              {options.map(opt => (
+                <option key={opt.code} value={opt.code}>{opt.code}</option>
+              ))}
+            </Select>
+          </div>
         </div>
 
-        {error && (
-          <div style={{ color: '#E53E3E', marginBottom: '12px' }}>{String(error)}</div>
-        )}
+        {loading && <div>Loading...</div>}
+        {error && <div style={{ color: '#E53E3E' }}>{String(error)}</div>}
 
-        {exp1 && exp2 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <MetricComparison
-              label="Open Metrics"
-              metrics1={exp1.metrics?.open || {}}
-              metrics2={exp2.metrics?.open || {}}
-              color="#38A169"
-            />
-            <MetricComparison
-              label="Close Metrics"
-              metrics1={exp1.metrics?.close || {}}
-              metrics2={exp2.metrics?.close || {}}
-              color="#E53E3E"
-            />
-            <MetricComparison
-              label="Reg Metrics"
-              metrics1={exp1.metrics?.reg || {}}
-              metrics2={exp2.metrics?.reg || {}}
-              color="#3182CE"
-            />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div>
+            <h3>Experiment 1</h3>
+            {exp1 ? (
+              <pre style={{ background: '#f7fafc', padding: '12px' }}>
+                {JSON.stringify(exp1, null, 2)}
+              </pre>
+            ) : (
+              <div>Select an experiment</div>
+            )}
           </div>
-        ) : (
-          <div style={{
-            padding: '32px',
-            textAlign: 'center',
-            color: '#718096',
-          }}>
-            {loading ? 'Loading...' : 'Select two experiments to compare their metrics'}
+          <div>
+            <h3>Experiment 2</h3>
+            {exp2 ? (
+              <pre style={{ background: '#f7fafc', padding: '12px' }}>
+                {JSON.stringify(exp2, null, 2)}
+              </pre>
+            ) : (
+              <div>Select an experiment</div>
+            )}
           </div>
-        )}
+        </div>
       </Card>
     </PageContainer>
   );

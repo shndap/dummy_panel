@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PageContainer, PageHeader, Card, Input, Select, Button } from './shared/UIComponents';
-import { getFrontendExperiments, patchFulltest, addImprovementType, removeImprovementType } from '../api/fulltests';
+import { getFrontendExperiments, patchFulltest, addImprovement, removeImprovement } from '../api/fulltests';
 
 function parseMaybeJSON(value, fallback) {
   if (value == null) return fallback;
@@ -25,7 +25,7 @@ function normalizeExperiment(exp) {
   const financial = parseMaybeJSON(exp.financial, exp.financial || {});
   const mlMetrics = parseMaybeJSON(exp.mlMetrics, exp.mlMetrics || {});
   const metrics = parseMaybeJSON(exp.metrics, exp.metrics || {});
-  const rawImprovements = exp.improvements != null ? exp.improvements : exp.improvement_type;
+  const rawImprovements = exp.improvements;
   return {
     ...exp,
     tags: ensureArray(exp.tags),
@@ -60,7 +60,7 @@ const ExperimentList = () => {
     status: '',
     is_valid: true,
     tags: [],
-    improvement_types: []
+    improvements: []
   });
 
   useEffect(() => {
@@ -80,6 +80,7 @@ const ExperimentList = () => {
         });
         const normalized = (results || []).map(normalizeExperiment);
         setExperiments(normalized);
+        console.log(normalized);
         setTotalCount(typeof count === 'number' ? count : normalized.length);
       } catch (e) {
         setError(e.data || e.message || 'Failed to load experiments');
@@ -349,7 +350,7 @@ const ExperimentList = () => {
       status: experiment.status || '',
       is_valid: experiment.is_valid === undefined ? true : !!experiment.is_valid,
       tags: [...experiment.tags],
-      improvement_types: ensureArray(experiment.improvements)
+      improvements: ensureArray(experiment.improvements)
     });
     setIsEditModalOpen(true);
   };
@@ -364,7 +365,7 @@ const ExperimentList = () => {
       status: '',
       is_valid: true,
       tags: [],
-      improvement_types: []
+      improvements: []
     });
   };
 
@@ -387,9 +388,9 @@ const ExperimentList = () => {
   const handleImprovementToggle = (improvement) => {
     setEditForm(prev => ({
       ...prev,
-      improvement_types: prev.improvement_types.includes(improvement)
-        ? prev.improvement_types.filter(imp => imp !== improvement)
-        : [...prev.improvement_types, improvement]
+      improvements: prev.improvements.includes(improvement)
+        ? prev.improvements.filter(imp => imp !== improvement)
+        : [...prev.improvements, improvement]
     }));
   };
 
@@ -417,13 +418,13 @@ const ExperimentList = () => {
       await patchFulltest(entityId, patchBody);
 
       const before = Array.isArray(editingExperiment.improvements) ? editingExperiment.improvements : String(editingExperiment.improvements || '').split(',').map(s => s.trim()).filter(Boolean);
-      const after = Array.isArray(editForm.improvement_types) ? editForm.improvement_types : String(editForm.improvement_types || '').split(',').map(s => s.trim()).filter(Boolean);
+      const after = Array.isArray(editForm.improvements) ? editForm.improvements : String(editForm.improvements || '').split(',').map(s => s.trim()).filter(Boolean);
       const toAdd = after.filter(x => !before.includes(x));
       const toRemove = before.filter(x => !after.includes(x));
 
       await Promise.all([
-        ...toAdd.map(type => addImprovementType(entityId, type)),
-        ...toRemove.map(type => removeImprovementType(entityId, type)),
+        ...toAdd.map(imp => addImprovement(entityId, imp)),
+        ...toRemove.map(imp => removeImprovement(entityId, imp)),
       ]);
       console.log(editForm);
 
@@ -436,7 +437,6 @@ const ExperimentList = () => {
         }
         updated.is_valid = !!editForm.is_valid;
         updated.improvements = after;
-        delete updated.improvement_types;
         return normalizeExperiment(updated);
       }));
     } catch (e) {
@@ -647,7 +647,7 @@ const ExperimentList = () => {
                   <th style={{ ...thStyle }}>Description</th>
                   <th style={{ ...thStyle }}>Tags</th>
                   <th style={{ ...thStyle }}>Metrics</th>
-                  <th style={{ ...thStyle }}>Improvement Types</th>
+                  <th style={{ ...thStyle }}>Improvements</th>
                   <th style={{ ...thStyle }}>Actions</th>
                 </tr>
               </thead>
@@ -792,11 +792,7 @@ const ExperimentList = () => {
                   <th style={{ ...thStyle }}>Loss</th>
                   <th style={{ ...thStyle }}>Total Trades</th>
                   <th 
-                    style={{ 
-                      ...thStyle, 
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                    }}
+                    style={{ ...thStyle, cursor: 'pointer', userSelect: 'none' }}
                     onClick={() => {
                       setSortConfig({
                         key: 'winRate',
@@ -1466,10 +1462,10 @@ const ExperimentList = () => {
                 )}
               </div>
 
-              {/* Improvement Types */}
+              {/* Improvements */}
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#4A5568' }}>
-                  Improvement Types
+                  Improvements
                 </label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', alignItems: 'flex-start' }}>
                   {['Open', 'Close', 'Reg'].map(imp => (
@@ -1481,8 +1477,8 @@ const ExperimentList = () => {
                         borderRadius: '16px',
                         fontSize: '12px',
                         fontWeight: '500',
-                        backgroundColor: editForm.improvement_types.includes(imp) ? '#3182CE' : '#EDF2F7',
-                        color: editForm.improvement_types.includes(imp) ? 'white' : '#4A5568',
+                        backgroundColor: editForm.improvements.includes(imp) ? '#3182CE' : '#EDF2F7',
+                        color: editForm.improvements.includes(imp) ? 'white' : '#4A5568',
                         cursor: 'pointer',
                         border: '1px solid #E2E8F0',
                         transition: 'all 0.2s ease',
@@ -1493,28 +1489,17 @@ const ExperimentList = () => {
                     </span>
                   ))}
                 </div>
-                {editForm.improvement_types.length > 0 && (
+                {editForm.improvements.length > 0 && (
                   <div style={{ fontSize: '12px', color: '#718096', marginTop: '8px' }}>
-                    Selected: {editForm.improvement_types.join(', ')}
+                    Selected: {editForm.improvements.join(', ')}
                   </div>
                 )}
               </div>
-            </div>
 
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              justifyContent: 'flex-end',
-              marginTop: '24px',
-              paddingTop: '16px',
-              borderTop: '1px solid #E2E8F0',
-            }}>
-              <Button variant="secondary" onClick={closeEditModal}>
-                Cancel
-              </Button>
-              <Button variant="primary" onClick={saveExperiment}>
-                Save Changes
-              </Button>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                <Button variant="secondary" onClick={closeEditModal}>Cancel</Button>
+                <Button variant="primary" onClick={saveExperiment}>Save</Button>
+              </div>
             </div>
           </div>
         </div>
@@ -1524,18 +1509,19 @@ const ExperimentList = () => {
 };
 
 const thStyle = {
-  padding: '12px 16px',
   textAlign: 'left',
-  borderBottom: '2px solid #E2E8F0',
+  padding: '12px 12px',
+  fontWeight: 600,
+  fontSize: '12px',
   color: '#4A5568',
-  fontWeight: '600',
-  whiteSpace: 'nowrap',
+  borderBottom: '1px solid #E2E8F0',
+  backgroundColor: '#F7FAFC'
 };
 
 const tdStyle = {
-  padding: '16px',
-  borderBottom: '1px solid #E2E8F0',
-  color: '#2D3748',
+  padding: '12px 12px',
+  borderBottom: '1px solid #EDF2F7',
+  color: '#2D3748'
 };
 
 export default ExperimentList;

@@ -41,19 +41,19 @@ export async function stopFulltest(id) {
   return apiFetch(`/api/fulltests/${id}/stop/`, { method: 'POST' });
 }
 
-// POST /api/fulltests/{id}/add_improvement_type/
-export async function addImprovementType(id, type) {
-  return apiFetch(`/api/fulltests/${id}/add_improvement_type/`, {
+// POST /api/fulltests/{id}/add_improvement/
+export async function addImprovement(id, improvement) {
+  return apiFetch(`/api/fulltests/${id}/add_improvement/`, {
     method: 'POST',
-    body: JSON.stringify({ improvement_type: type }),
+    body: JSON.stringify({ improvement }),
   });
 }
 
-// POST /api/fulltests/{id}/remove_improvement_type/
-export async function removeImprovementType(id, type) {
-  return apiFetch(`/api/fulltests/${id}/remove_improvement_type/`, {
+// POST /api/fulltests/{id}/remove_improvement/
+export async function removeImprovement(id, improvement) {
+  return apiFetch(`/api/fulltests/${id}/remove_improvement/`, {
     method: 'POST',
-    body: JSON.stringify({ improvement_type: type }),
+    body: JSON.stringify({ improvement }),
   });
 }
 

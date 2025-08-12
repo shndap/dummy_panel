@@ -557,9 +557,9 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/fulltests/{id}/add_improvement_type/:
+  /api/fulltests/{id}/add_improvement/:
     post:
-      operationId: fulltests_add_improvement_type_create
+      operationId: fulltests_add_improvement_create
       description: Add improvement type to experiment
       parameters:
       - in: path
@@ -721,9 +721,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Experiment'
           description: ''
-  /api/fulltests/{id}/remove_improvement_type/:
+  /api/fulltests/{id}/remove_improvement/:
     post:
-      operationId: fulltests_remove_improvement_type_create
+      operationId: fulltests_remove_improvement_create
       description: Remove improvement type from experiment
       parameters:
       - in: path
@@ -1098,7 +1098,7 @@ components:
           readOnly: true
         is_valid:
           type: boolean
-        improvement_types: {}
+        improvements: {}
         status:
           $ref: '#/components/schemas/StatusEnum'
         high_priority:
@@ -1235,7 +1235,7 @@ components:
           type: string
         is_valid:
           type: boolean
-        improvement_types: {}
+        improvements: {}
         status:
           $ref: '#/components/schemas/StatusEnum'
         high_priority:
@@ -1286,7 +1286,7 @@ components:
           type: string
         is_valid:
           type: boolean
-        improvement_types: {}
+        improvements: {}
         status:
           $ref: '#/components/schemas/StatusEnum'
     ExperimentUpdateRequest:
@@ -1299,7 +1299,7 @@ components:
           type: string
         is_valid:
           type: boolean
-        improvement_types: {}
+        improvements: {}
         status:
           $ref: '#/components/schemas/StatusEnum'
     FrontendExperiment:
@@ -1325,9 +1325,7 @@ components:
         tags:
           type: string
           readOnly: true
-        improvements:
-          type: string
-          readOnly: true
+        improvements: {}
         financial:
           type: string
           readOnly: true
@@ -1408,7 +1406,7 @@ components:
           type: string
         is_valid:
           type: boolean
-        improvement_types: {}
+        improvements: {}
         status:
           $ref: '#/components/schemas/StatusEnum'
     StatusEnum:
