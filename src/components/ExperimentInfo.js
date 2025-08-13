@@ -16,12 +16,12 @@ const ExperimentInfo = () => {
     return match?.pk ?? match?.id ?? input;
   };
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
+  const fetchByInput = async (rawInput) => {
     setIsLoading(true);
     setError(null);
     try {
-      const raw = experimentCode.trim();
+      const raw = (rawInput || '').trim();
+      if (!raw) throw new Error('No experiment code provided');
       const id = await resolveId(raw);
       const [gitDiff, gitInfo] = await Promise.all([
         apiFetch(`/api/fulltests/${id}/git_diff/`),
@@ -64,52 +64,64 @@ const ExperimentInfo = () => {
     }
   };
 
-  const renderGitInfo = () => {
-    if (!experimentData) return null;
-    const { gitInfoObject, gitInfoRaw } = experimentData;
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    await fetchByInput(experimentCode);
+  };
 
-    if (gitInfoObject && typeof gitInfoObject === 'object') {
-      const entries = Object.entries(gitInfoObject);
-      return (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #E2E8F0', color: '#4A5568' }}>Key</th>
-                <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #E2E8F0', color: '#4A5568' }}>Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map(([key, value]) => (
-                <tr key={key}>
-                  <td style={{ padding: '8px', borderBottom: '1px solid #EDF2F7', color: '#2D3748', whiteSpace: 'nowrap' }}>{key}</td>
-                  <td style={{ padding: '8px', borderBottom: '1px solid #EDF2F7', color: '#2D3748' }}>
-                    {typeof value === 'object' ? (
-                      <pre style={{ margin: 0 }}>{JSON.stringify(value, null, 2)}</pre>
-                    ) : (
-                      String(value)
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const exp = params.get('exp');
+    if (exp) {
+      setExperimentCode(exp);
+      fetchByInput(exp);
     }
+  }, []);
 
-    // Fallback to raw text
+  const renderGitDiffPretty = (text) => {
+    const lines = String(text || '').split('\n');
+    const isHeader = (l) => l.startsWith('diff --git') || l.startsWith('index ') || l.startsWith('+++ ') || l.startsWith('--- ');
+    const isHunk = (l) => l.startsWith('@@');
+    const isAdd = (l) => l.startsWith('+') && !l.startsWith('+++ ');
+    const isDel = (l) => l.startsWith('-') && !l.startsWith('--- ');
+
     return (
-      <pre style={{ 
-        background: '#f7fafc',
-        padding: '16px',
+      <div style={{
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+        fontSize: '12px',
+        background: '#1e1e1e',
+        color: '#e2e8f0',
+        padding: '12px',
         borderRadius: '8px',
-        border: '1px solid #e2e8f0',
-        fontSize: '13px',
-        lineHeight: 1.5,
+        overflowX: 'auto',
       }}>
-        {gitInfoRaw || 'No git info available'}
-      </pre>
+        {lines.map((line, idx) => {
+          const style = {
+            padding: '0 8px',
+            whiteSpace: 'pre',
+          };
+          if (isHeader(line)) {
+            style.background = '#2d3748';
+            style.color = '#63b3ed';
+          } else if (isHunk(line)) {
+            style.background = '#2a4365';
+            style.color = '#fbd38d';
+          } else if (isAdd(line)) {
+            style.background = '#1f3d2b';
+            style.color = '#9ae6b4';
+          } else if (isDel(line)) {
+            style.background = '#4a2020';
+            style.color = '#feb2b2';
+          } else {
+            style.color = '#e2e8f0';
+          }
+          return (
+            <div key={idx} style={style}>
+              {line || '\u00A0'}
+            </div>
+          );
+        })}
+      </div>
     );
   };
 
@@ -138,22 +150,55 @@ const ExperimentInfo = () => {
           <div style={{ marginTop: '24px' }}>
             <div style={{ marginBottom: '24px' }}>
               <h4 style={{ color: '#2d3748', marginBottom: '12px' }}>Git Diff</h4>
-              <pre style={{ 
-                background: '#2d3748',
-                color: '#e2e8f0',
-                padding: '16px',
-                borderRadius: '8px',
-                overflowX: 'auto',
-                fontSize: '13px',
-                lineHeight: 1.5,
-              }}>
-                {experimentData.gitDiff}
-              </pre>
+              {renderGitDiffPretty(experimentData.gitDiff)}
             </div>
 
             <div style={{ marginBottom: '24px' }}>
               <h4 style={{ color: '#2d3748', marginBottom: '12px' }}>Git Info</h4>
-              {renderGitInfo()}
+              {(() => {
+                const { gitInfoObject, gitInfoRaw } = experimentData;
+                if (gitInfoObject && typeof gitInfoObject === 'object') {
+                  const entries = Object.entries(gitInfoObject);
+                  return (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #E2E8F0', color: '#4A5568' }}>Key</th>
+                            <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #E2E8F0', color: '#4A5568' }}>Value</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {entries.map(([key, value]) => (
+                            <tr key={key}>
+                              <td style={{ padding: '8px', borderBottom: '1px solid #EDF2F7', color: '#2D3748', whiteSpace: 'nowrap' }}>{key}</td>
+                              <td style={{ padding: '8px', borderBottom: '1px solid #EDF2F7', color: '#2D3748' }}>
+                                {typeof value === 'object' ? (
+                                  <pre style={{ margin: 0 }}>{JSON.stringify(value, null, 2)}</pre>
+                                ) : (
+                                  String(value)
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                }
+                return (
+                  <pre style={{ 
+                    background: '#f7fafc',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    fontSize: '13px',
+                    lineHeight: 1.5,
+                  }}>
+                    {gitInfoRaw || 'No git info available'}
+                  </pre>
+                );
+              })()}
             </div>
 
             <div>

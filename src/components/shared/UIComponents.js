@@ -102,6 +102,7 @@ export const Input = ({ ...props }) => (
       border: '1px solid #e2e8f0',
       fontSize: '14px',
       width: '100%',
+      boxSizing: 'border-box',
       ...props.style,
     }}
   />

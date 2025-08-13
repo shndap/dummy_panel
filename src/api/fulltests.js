@@ -10,6 +10,12 @@ export async function getFrontendExperiments(params = {}) {
   return { results, count, raw };
 }
 
+// GET /api/fulltests/compare_files/?exp1=...&exp2=...
+export async function getComparisonFiles(exp1, exp2) {
+  const qs = buildQueryString({ exp1, exp2 });
+  return apiFetch(`/api/fulltests/compare_files/${qs}`);
+}
+
 // GET /api/fulltests/frontend_improved/
 export async function getImprovedExperiments(params = {}) {
   const qs = buildQueryString(params);

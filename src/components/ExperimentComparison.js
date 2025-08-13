@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { PageContainer, PageHeader, Card, Select } from './shared/UIComponents';
-import { getFrontendExperiments } from '../api/fulltests';
+import { getFrontendExperiments, getComparisonFiles } from '../api/fulltests';
 
 function parseMaybeJSON(value, fallback) {
   if (value == null) return fallback;
@@ -62,7 +62,7 @@ const MetricTable = ({ label, m1 = {}, m2 = {} }) => {
     const n2 = Number(v2);
     if (n1 === n2) return { better: 0, change: 0 };
     const better = higherIsBetter ? (n1 > n2 ? 1 : -1) : (n1 < n2 ? 1 : -1);
-    const base = higherIsBetter ? n2 : n2; // percentage vs exp2
+    const base = n2;
     const change = base !== 0 ? ((n1 - n2) / Math.abs(base)) * 100 : null;
     return { better, change };
   };
@@ -113,6 +113,7 @@ const ExperimentComparison = () => {
   const [exp2, setExp2] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [files, setFiles] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -146,6 +147,133 @@ const ExperimentComparison = () => {
       setLoading(false);
     }
   }
+
+  // Load from query params on mount: /comparison?exp1=CODE1&exp2=CODE2
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const e1 = params.get('exp1');
+    const e2 = params.get('exp2');
+    if (e1) {
+      setSelectedExp1(e1);
+      loadByCode(e1, setExp1);
+    }
+    if (e2) {
+      setSelectedExp2(e2);
+      loadByCode(e2, setExp2);
+    }
+  }, []);
+
+  // When both codes are selected, fetch params/summary for file comparison
+  useEffect(() => {
+    async function loadFiles() {
+      if (!selectedExp1 || !selectedExp2) { setFiles(null); return; }
+      try {
+        const res = await getComparisonFiles(selectedExp1, selectedExp2);
+        setFiles(res);
+      } catch (e) {
+        // Non-fatal
+        setFiles(null);
+      }
+    }
+    loadFiles();
+  }, [selectedExp1, selectedExp2]);
+
+  // Diff helpers
+  const MAX_DIFF_ITEMS = 300;
+  const isArray = (x) => Array.isArray(x);
+  const isPlainObject = (x) => x && typeof x === 'object' && !Array.isArray(x);
+  const typeLabel = (v) => {
+    if (v === undefined) return 'missing';
+    if (v === null) return 'null';
+    if (isArray(v)) return `array[${v.length}]`;
+    if (isPlainObject(v)) return `object{${Object.keys(v).length}}`;
+    return typeof v;
+  };
+  const renderValueCell = (v, emphasis) => {
+    const baseStyle = {
+      padding: '8px',
+      borderBottom: '1px solid #EDF2F7',
+      color: emphasis === 'added' ? '#38A169' : emphasis === 'removed' ? '#E53E3E' : '#2D3748',
+      fontFamily: 'inherit',
+      verticalAlign: 'top',
+    };
+    if (v === undefined) {
+      return <td style={baseStyle}><span style={{ color: '#A0AEC0', fontStyle: 'italic' }}>missing</span></td>;
+    }
+    if (isPlainObject(v) || isArray(v)) {
+      const summary = typeLabel(v);
+      return (
+        <td style={baseStyle}>
+          <details>
+            <summary style={{ cursor: 'pointer' }}>{summary}</summary>
+            <pre style={{ margin: '6px 0 0', background: '#F7FAFC', padding: '8px', border: '1px solid #E2E8F0', borderRadius: '4px' }}>
+              {JSON.stringify(v, null, 2)}
+            </pre>
+          </details>
+        </td>
+      );
+    }
+    // Primitive values
+    const display = typeof v === 'number' ? v.toFixed(6) : String(v);
+    return <td style={baseStyle}>{display}</td>;
+  };
+  const diffObjects = (a, b, base = '') => {
+    const changes = [];
+    const keys = new Set([...(a ? Object.keys(a) : []), ...(b ? Object.keys(b) : [])]);
+    for (const k of keys) {
+      const path = base ? `${base}.${k}` : k;
+      const va = a ? a[k] : undefined;
+      const vb = b ? b[k] : undefined;
+      if (va === undefined && vb !== undefined) {
+        changes.push({ type: 'added', path, a: '', b: vb });
+      } else if (vb === undefined && va !== undefined) {
+        changes.push({ type: 'removed', path, a: va, b: '' });
+      } else if (isPlainObject(va) && isPlainObject(vb)) {
+        changes.push(...diffObjects(va, vb, path));
+      } else if (JSON.stringify(va) !== JSON.stringify(vb)) {
+        changes.push({ type: 'changed', path, a: va, b: vb });
+      }
+      if (changes.length >= MAX_DIFF_ITEMS) break;
+    }
+    return changes;
+  };
+
+  const paramsDiff = useMemo(() => {
+    if (!files || !files.success) return [];
+    return diffObjects(files.exp1?.params || {}, files.exp2?.params || {});
+  }, [files]);
+  const summaryDiff = useMemo(() => {
+    if (!files || !files.success) return [];
+    return diffObjects(files.exp1?.summary || {}, files.exp2?.summary || {});
+  }, [files]);
+
+  const DiffTable = ({ title, diff }) => (
+    <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', overflow: 'hidden' }}>
+      <div style={{ background: '#F7FAFC', padding: '8px 12px', fontWeight: 600, color: '#4A5568' }}>{title} ({diff.length})</div>
+      {diff.length === 0 ? (
+        <div style={{ padding: '12px', color: '#718096' }}>No differences</div>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #E2E8F0' }}>Path</th>
+              <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #E2E8F0' }}>Exp 1</th>
+              <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #E2E8F0' }}>Exp 2</th>
+            </tr>
+          </thead>
+          <tbody>
+            {diff.slice(0, MAX_DIFF_ITEMS).map((d, idx) => (
+              <tr key={idx}>
+                <td style={{ padding: '8px', borderBottom: '1px solid #EDF2F7', color: '#2D3748', whiteSpace: 'nowrap' }}>{d.path}</td>
+                {renderValueCell(d.a, d.type === 'removed' ? 'removed' : undefined)}
+                {renderValueCell(d.b, d.type === 'added' ? 'added' : undefined)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
 
   return (
     <PageContainer>
@@ -190,9 +318,12 @@ const ExperimentComparison = () => {
 
         {exp1 && exp2 ? (
           <div style={{ display: 'grid', gap: '16px' }}>
-            <MetricTable label="Open Metrics" m1={exp1.metrics?.open} m2={exp2.metrics?.open} />
-            <MetricTable label="Close Metrics" m1={exp1.metrics?.close} m2={exp2.metrics?.close} />
-            <MetricTable label="Reg Metrics" m1={exp1.metrics?.reg} m2={exp2.metrics?.reg} />
+            {files && files.success && (
+              <div style={{ display: 'grid', gap: '16px' }}>
+                <DiffTable title={`Params differences`} diff={paramsDiff} />
+                <DiffTable title={`Summary differences`} diff={summaryDiff} />
+              </div>
+            )}
           </div>
         ) : (
           <div style={{ padding: '24px', color: '#718096' }}>

@@ -1256,8 +1256,26 @@ const ExperimentList = () => {
             alignItems: 'center',
           }}>
             <span>{selectedExps.length} selected</span>
-            <Button variant="secondary">Compare Selected</Button>
-            <Button variant="danger">Delete Selected</Button>
+            <Button variant="secondary"
+              onClick={() => {
+                if (selectedExps.length < 2) {
+                  alert('Select at least two experiments to compare.');
+                  return;
+                }
+                const ids = selectedExps.slice(0, 2);
+                console.log(ids);
+                console.log(experiments);
+                // Map selected ids to experiment codes
+                const idToExp = new Map(experiments.map(e => [(e.code ?? e.id), e]));
+                const codes = ids.map(id => idToExp.get(id)?.code).filter(Boolean);
+                console.log(codes);
+                if (codes.length < 2) {
+                  alert('Could not resolve selected experiments.');
+                  return;
+                }
+                window.location.href = `/comparison?exp1=${encodeURIComponent(codes[0])}&exp2=${encodeURIComponent(codes[1])}`;
+              }}
+            >Compare Selected</Button>
           </div>
         )}
 
