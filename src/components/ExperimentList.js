@@ -21,6 +21,91 @@ function ensureArray(value) {
   return [];
 }
 
+// Recursively collect numeric leaf keys as dotted paths
+function collectNumericPaths(obj, basePath, pathSet) {
+  if (!obj || typeof obj !== 'object') return;
+  for (const [key, val] of Object.entries(obj)) {
+    const path = basePath ? `${basePath}.${key}` : key;
+    if (val != null && typeof val === 'object' && !Array.isArray(val)) {
+      collectNumericPaths(val, path, pathSet);
+    } else if (typeof val === 'number') {
+      pathSet.add(path);
+    }
+  }
+}
+
+function getByPath(obj, path) {
+  if (!obj || !path) return undefined;
+  return path.split('.').reduce((acc, part) => (acc && typeof acc === 'object' ? acc[part] : undefined), obj);
+}
+
+// Build hierarchical header rows and leaf order from dotted paths
+function buildFinancialHeader(paths) {
+  const root = { label: null, children: {} };
+  const insert = (segments) => {
+    let node = root;
+    for (const seg of segments) {
+      if (!node.children[seg]) node.children[seg] = { label: seg, children: {} };
+      node = node.children[seg];
+    }
+  };
+  (paths || []).forEach(p => insert(String(p).split('.').filter(Boolean)));
+
+  const countLeaves = (node) => {
+    const keys = Object.keys(node.children);
+    if (keys.length === 0) return 1;
+    return keys.reduce((sum, k) => sum + countLeaves(node.children[k]), 0);
+  };
+  const depthOf = (node) => {
+    const keys = Object.keys(node.children);
+    if (keys.length === 0) return 1;
+    return 1 + Math.max(...keys.map(k => depthOf(node.children[k])));
+  };
+
+  const depth = Math.max(1, depthOf(root) - 0); // depth below root
+  const rows = Array.from({ length: Math.max(1, depth - 0) }, () => []);
+  const leafOrder = [];
+  const fill = (node, level, prefix) => {
+    const keys = Object.keys(node.children).sort();
+    for (const k of keys) {
+      const child = node.children[k];
+      const colSpan = countLeaves(child);
+      const isLeaf = Object.keys(child.children).length === 0;
+      const rowSpan = isLeaf ? (depth - level) : 1;
+      rows[level].push({ label: child.label, colSpan, rowSpan });
+      if (isLeaf) {
+        leafOrder.push(prefix ? `${prefix}.${child.label}` : child.label);
+      } else {
+        fill(child, level + 1, prefix ? `${prefix}.${child.label}` : child.label);
+      }
+    }
+  };
+  if (Object.keys(root.children).length > 0) fill(root, 0, '');
+
+  const headerDepth = rows.length || 1;
+  return { headerRows: rows, leafOrder, headerDepth };
+}
+
+function formatNumberCell(value) {
+  if (value == null || (typeof value === 'number' && Number.isNaN(value))) {
+    return { text: '', style: {} };
+  }
+  if (typeof value === 'number') {
+    const text = Number(value).toFixed(5);
+    const style = {
+      color: value > 0 ? '#38A169' : value < 0 ? '#E53E3E' : '#2D3748',
+      fontWeight: value !== 0 ? 600 : undefined,
+    };
+    return { text, style };
+  }
+  return { text: String(value), style: {} };
+}
+
+function getPlotsUrl(code) {
+  if (!code) return null;
+  return `https://trader-results.roshan-ai.ir/fulltest_cache/${encodeURIComponent(code)}_FullTest/plots.html`;
+}
+
 function normalizeExperiment(exp) {
   const financial = parseMaybeJSON(exp.financial, exp.financial || {});
   const mlMetrics = parseMaybeJSON(exp.mlMetrics, exp.mlMetrics || {});
@@ -98,6 +183,35 @@ const ExperimentList = () => {
     }
     return Array.from(tagSet).sort();
   }, [experiments]);
+
+  // Dynamic financial keys from nested summary.json numeric leaves (no cap)
+  const financialKeys = useMemo(() => {
+    const keySet = new Set();
+    for (const exp of experiments) {
+      collectNumericPaths(exp.financial || {}, '', keySet);
+    }
+    return Array.from(keySet);
+  }, [experiments]);
+
+  // Split keys by presence of "average"
+  const financialKeysMetrics = useMemo(
+    () => financialKeys.filter(k => String(k).toLowerCase().includes('average')),
+    [financialKeys]
+  );
+  const financialKeysData = useMemo(
+    () => financialKeys.filter(k => !String(k).toLowerCase().includes('average')),
+    [financialKeys]
+  );
+
+  // Build headers per view
+  const { headerRows: headerRowsData, leafOrder: leafOrderData, headerDepth: headerDepthData } = useMemo(
+    () => buildFinancialHeader(financialKeysData),
+    [financialKeysData]
+  );
+  const { headerRows: headerRowsMetrics, leafOrder: leafOrderMetrics, headerDepth: headerDepthMetrics } = useMemo(
+    () => buildFinancialHeader(financialKeysMetrics),
+    [financialKeysMetrics]
+  );
 
   const totalPages = Math.max(1, Math.ceil(totalCount / itemsPerPage));
   const paginatedExperiments = experiments;
@@ -270,50 +384,25 @@ const ExperimentList = () => {
   );
 
   const exportToCSV = () => {
+    // Keep all financial keys in CSV
+    const finHeaders = [...leafOrderData, ...leafOrderMetrics];
     const headers = [
       'Code', 'Date', 'Author', 'Description', 'Status', 'Tags', 
-      'PnL', 'Profit', 'Loss', 'Win Rate', 'Total Trades', 'Sharpe Ratio', 'Max Drawdown',
-      'PnL Q1', 'PnL Q2', 'PnL Q3', 'PnL Q4',
-      'Precision', 'Recall', 'F1 Score', 'Accuracy',
-      'Val Precision', 'Val Recall', 'Val F1', 'Val Accuracy',
-      'Profit Factor', 'Calmar Ratio', 'Sortino Ratio'
+      ...finHeaders
     ];
 
-    const toPercent = (v) => v == null ? '' : `${(v * 100).toFixed(1)}%`;
-    const safe = (v) => (v == null ? '' : String(v));
+    const toCell = (v) => v == null ? '' : (typeof v === 'number' ? Number(v).toFixed(5) : String(v));
 
     const data = experiments.map(exp => {
-      const fin = typeof exp.financial === 'string' ? JSON.parse(exp.financial) : (exp.financial || {});
-      const ml = typeof exp.mlMetrics === 'string' ? JSON.parse(exp.mlMetrics) : (exp.mlMetrics || {});
+      const fin = exp.financial || {};
       return [
         exp.code,
         exp.date,
         exp.author,
         exp.description,
         exp.status,
-        Array.isArray(exp.tags) ? exp.tags.join(';') : safe(exp.tags),
-        safe(fin.pnl?.toFixed ? fin.pnl.toFixed(2) : fin.pnl),
-        safe(fin.profit?.toFixed ? fin.profit.toFixed(2) : fin.profit),
-        safe(fin.loss?.toFixed ? fin.loss.toFixed(2) : fin.loss),
-        toPercent(fin.winRate),
-        safe(fin.totalTrades),
-        safe(fin.sharpeRatio?.toFixed ? fin.sharpeRatio.toFixed(3) : fin.sharpeRatio),
-        fin.maxDrawdown != null ? `${(fin.maxDrawdown * 100).toFixed(1)}%` : '',
-        safe(fin.pnlQ1),
-        safe(fin.pnlQ2),
-        safe(fin.pnlQ3),
-        safe(fin.pnlQ4),
-        toPercent(ml.precision),
-        toPercent(ml.recall),
-        toPercent(ml.f1Score),
-        toPercent(ml.accuracy),
-        toPercent(ml.validationPrecision),
-        toPercent(ml.validationRecall),
-        toPercent(ml.validationF1),
-        toPercent(ml.validationAccuracy),
-        safe(fin.profitFactor?.toFixed ? fin.profitFactor.toFixed(2) : fin.profitFactor),
-        safe(fin.calmarRatio?.toFixed ? fin.calmarRatio.toFixed(3) : fin.calmarRatio),
-        safe(fin.sortinoRatio?.toFixed ? fin.sortinoRatio.toFixed(3) : fin.sortinoRatio),
+        Array.isArray(exp.tags) ? exp.tags.join(';') : toCell(exp.tags),
+        ...finHeaders.map(k => toCell(getByPath(fin, k)))
       ];
     });
 
@@ -341,13 +430,12 @@ const ExperimentList = () => {
   // Edit modal functions
   const openEditModal = (experiment) => {
     setEditingExperiment(experiment);
-    console.log('Editting:', experiment);
     setEditForm({
       code: experiment.code,
       description: experiment.description,
       author: experiment.author,
       status: experiment.status || '',
-      is_valid: experiment.is_valid === undefined ? true : !!experiment.is_valid,
+      is_valid: experiment.isValid === undefined ? true : !!experiment.isValid,
       tags: [...experiment.tags],
       improvements: ensureArray(experiment.improvements)
     });
@@ -487,13 +575,13 @@ const ExperimentList = () => {
               variant={viewMode === 'table' ? 'primary' : 'secondary'}
               onClick={() => setViewMode('table')}
             >
-              Data Table
+              ML Metrics Table
             </Button>
             <Button 
               variant={viewMode === 'metrics' ? 'primary' : 'secondary'}
               onClick={() => setViewMode('metrics')}
             >
-              Metrics Table
+              PNL Table
             </Button>
           </div>
         </div>
@@ -563,19 +651,19 @@ const ExperimentList = () => {
           />
           <QuickFilter 
             label="Invalid"
-            count={experiments.filter(e => e.status === 'invalid').length}
+            count={experiments.filter(e => e.status === 'invalid' || !e.isValid).length}
             active={filterType === 'invalid'}
             onClick={() => setFilterType('invalid')}
           />
           <QuickFilter 
             label="Profitable"
-            count={experiments.filter(e => e.financial?.pnl > 0).length}
+            count={experiments.filter(e => typeof e.financial?.pnl === 'number' && e.financial.pnl > 0).length}
             active={false}
             onClick={() => {}}
           />
           <QuickFilter 
             label="High Win Rate"
-            count={experiments.filter(e => e.financial?.winRate > 0.6).length}
+            count={experiments.filter(e => typeof e.financial?.winRate === 'number' && e.financial.winRate > 0.6).length}
             active={false}
             onClick={() => {}}
           />
@@ -617,7 +705,7 @@ const ExperimentList = () => {
             }}>
               <thead>
                 <tr>
-                  <th style={{ ...thStyle, maxWidth: '40px' }}>
+                  <th style={{ ...thStyle, maxWidth: '40px', borderRight: '1px solid #E2E8F0' }}>
                     <input
                       type="checkbox"
                       onChange={e => {
@@ -625,12 +713,13 @@ const ExperimentList = () => {
                       }}
                     />
                   </th>
-                  <th style={{ ...thStyle, textAlign: 'left' }}>Code</th>
+                  <th style={{ ...thStyle, textAlign: 'left', borderRight: '1px solid #E2E8F0' }}>Code</th>
                   <th 
                     style={{ 
                       ...thStyle, 
                       cursor: 'pointer',
                       userSelect: 'none',
+                      borderRight: '1px solid #E2E8F0'
                     }}
                     onClick={() => {
                       setSortConfig({
@@ -641,82 +730,92 @@ const ExperimentList = () => {
                   >
                     Date {sortConfig.key === 'date' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th style={{ ...thStyle }}>Author</th>
-                  <th style={{ ...thStyle }}>Description</th>
-                  <th style={{ ...thStyle }}>Tags</th>
-                  <th style={{ ...thStyle }}>Improvements</th>
+                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }}>Author</th>
+                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }}>Description</th>
+                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }}>Tags</th>
+                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }}>Improvements</th>
                   <th style={{ ...thStyle }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {sortedExperiments.map(exp => (
-                  <tr 
-                    key={exp.id}
-                    style={{
-                      transition: 'background-color 0.2s ease',
-                      backgroundColor: exp.status === 'invalid' ? '#FFF5F5' : 'white',
-                      '&:hover': {
-                        backgroundColor: exp.status === 'invalid' ? '#FED7D7' : '#F7FAFC',
-                      },
-                    }}
-                  >
-                    <td style={tdStyle}>
-                      <input
-                        type="checkbox"
-                        checked={selectedExps.includes(exp.id)}
-                        onChange={e => {
-                          if (e.target.checked) {
-                            setSelectedExps([...selectedExps, exp.id]);
-                          } else {
-                            setSelectedExps(selectedExps.filter(id => id !== exp.id));
-                          }
-                        }}
-                      />
-                    </td>
-                    <td style={{ ...tdStyle, fontWeight: '500', textAlign: 'left' }}>{exp.code}</td>
-                    <td style={tdStyle}>{new Date(exp.date).toLocaleDateString()}</td>
-                    <td style={tdStyle}>{exp.author}</td>
-                    <td style={tdStyle}>{exp.description}</td>
-                    <td style={tdStyle}>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', alignItems: 'flex-start', width: 'fit-content' }}>
-                        {exp.tags.map(tag => (
-                          <TagBadge key={tag} tag={tag} />
-                        ))}
-                      </div>
-                    </td>
-                    <td style={{ ...tdStyle, width: 'fit-content' }}>
-                      <ImprovementBadges 
-                        improvements={exp.improvements}
-                        status={exp.status}
-                      />
-                    </td>
-                    <td style={{ ...tdStyle, width: 'fit-content' }}>
-                      <div style={{ display: 'flex', gap: '8px', boxSizing: 'border-box', width: 'fit-content' }}>
-                        <Button 
-                          variant="secondary" 
-                          onClick={() => window.location.href = `/comparison?exp=${exp.code}`}
-                          style={{ padding: '6px 12px', fontSize: '12px' }}
-                        >
-                          Compare
-                        </Button>
-                        <Button 
-                          variant="secondary" 
-                          onClick={() => window.location.href = `/info?exp=${exp.code}`}
-                          style={{ padding: '6px 12px', fontSize: '12px' }}
-                        >
-                          Details
-                        </Button>
-                        <Button 
-                          variant="secondary" 
-                          onClick={() => openEditModal(exp)}
-                          style={{ padding: '6px 12px', fontSize: '12px' }}
-                        >
-                          Edit
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {sortedExperiments.map(exp => {
+                  const improved = ensureArray(exp.improvements).length > 0;
+                  const url = improved ? getPlotsUrl(exp.code) : null;
+                  return (
+                    <tr 
+                      key={exp.id}
+                      style={{
+                        transition: 'background-color 0.2s ease',
+                        backgroundColor: exp.status === 'invalid' || !exp.isValid ? '#FFF5F5' : 'white',
+                        '&:hover': {
+                          backgroundColor: exp.status === 'invalid' || !exp.isValid ? '#FED7D7' : '#F7FAFC',
+                        },
+                      }}
+                    >
+                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedExps.includes(exp.id)}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setSelectedExps([...selectedExps, exp.id]);
+                            } else {
+                              setSelectedExps(selectedExps.filter(id => id !== exp.id));
+                            }
+                          }}
+                        />
+                      </td>
+                      <td style={{ ...tdStyle, fontWeight: '500', textAlign: 'left', borderRight: '1px solid #F1F5F9' }}>
+                        {improved && url ? (
+                          <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#3182CE', textDecoration: 'underline' }}>{exp.code}</a>
+                        ) : (
+                          exp.code
+                        )}
+                      </td>
+                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>{new Date(exp.date).toLocaleDateString()}</td>
+                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>{exp.author}</td>
+                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>{exp.description}</td>
+                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', alignItems: 'flex-start', width: 'fit-content' }}>
+                          {exp.tags.map(tag => (
+                            <TagBadge key={tag} tag={tag} />
+                          ))}
+                        </div>
+                      </td>
+                      <td style={{ ...tdStyle, width: 'fit-content', borderRight: '1px solid #F1F5F9' }}>
+                        <ImprovementBadges 
+                          improvements={exp.improvements}
+                          status={exp.status}
+                        />
+                      </td>
+                      <td style={{ ...tdStyle, width: 'fit-content' }}>
+                        <div style={{ display: 'flex', gap: '8px', boxSizing: 'border-box', width: 'fit-content' }}>
+                          <Button 
+                            variant="secondary" 
+                            onClick={() => window.location.href = `/comparison?exp=${exp.code}`}
+                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                          >
+                            Compare
+                          </Button>
+                          <Button 
+                            variant="secondary" 
+                            onClick={() => window.location.href = `/info?exp=${exp.code}`}
+                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                          >
+                            Details
+                          </Button>
+                          <Button 
+                            variant="secondary" 
+                            onClick={() => openEditModal(exp)}
+                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                          >
+                            Edit
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -734,7 +833,7 @@ const ExperimentList = () => {
             }}>
               <thead>
                 <tr>
-                  <th style={{ ...thStyle, width: '40px' }}>
+                  <th style={{ ...thStyle, width: '40px', borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthData}>
                     <input
                       type="checkbox"
                       onChange={e => {
@@ -742,176 +841,129 @@ const ExperimentList = () => {
                       }}
                     />
                   </th>
-                  <th style={{ ...thStyle, textAlign: 'left' }}>Code</th>
-                  <th style={{ ...thStyle }}>Date</th>
-                  <th style={{ ...thStyle }}>Author</th>
-                  <th style={{ ...thStyle }}>Status</th>
-                  <th style={{ ...thStyle }}>Tags</th>
-                  <th 
-                    style={{ 
-                      ...thStyle, 
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                    }}
-                    onClick={() => {
-                      setSortConfig({
-                        key: 'pnl',
-                        direction: sortConfig.direction === 'asc' ? 'desc' : 'asc'
-                      });
-                    }}
-                  >
-                    PnL {sortConfig.key === 'pnl' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th style={{ ...thStyle }}>Profit</th>
-                  <th style={{ ...thStyle }}>Loss</th>
-                  <th style={{ ...thStyle }}>Total Trades</th>
-                  <th 
-                    style={{ ...thStyle, cursor: 'pointer', userSelect: 'none' }}
-                    onClick={() => {
-                      setSortConfig({
-                        key: 'winRate',
-                        direction: sortConfig.direction === 'asc' ? 'desc' : 'asc'
-                      });
-                    }}
-                  >
-                    Win Rate {sortConfig.key === 'winRate' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th style={{ ...thStyle }}>Avg Win</th>
-                  <th style={{ ...thStyle }}>Avg Loss</th>
-                  <th style={{ ...thStyle }}>Sharpe Ratio</th>
-                  <th style={{ ...thStyle }}>Max Drawdown</th>
-                  <th style={{ ...thStyle }}>Volatility</th>
-                  <th style={{ ...thStyle }}>Actions</th>
+                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthData}>Code</th>
+                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthData}>Date</th>
+                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthData}>Author</th>
+                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthData}>Status</th>
+                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthData}>Tags</th>
+                  {headerRowsData.length > 0 ? headerRowsData[0].map((cell, idx) => (
+                    <th key={`h1-${idx}`} style={{ ...thStyle, backgroundColor: '#F0FFF4', borderRight: '1px solid #E2E8F0' }} colSpan={cell.colSpan} rowSpan={cell.rowSpan}>{cell.label}</th>
+                  )) : null}
+                  <th style={{ ...thStyle }} rowSpan={headerDepthData}>Actions</th>
                 </tr>
-              </thead>
-              <tbody>
-                {sortedExperiments.map(exp => (
-                  <tr 
-                    key={exp.id}
-                    style={{
-                      transition: 'background-color 0.2s ease',
-                      backgroundColor: exp.status === 'invalid' ? '#FFF5F5' : 'white',
-                      '&:hover': {
-                        backgroundColor: exp.status === 'invalid' ? '#FED7D7' : '#F7FAFC',
-                      },
-                    }}
-                  >
-                    <td style={tdStyle}>
-                      <input
-                        type="checkbox"
-                        checked={selectedExps.includes(exp.id)}
-                        onChange={e => {
-                          if (e.target.checked) {
-                            setSelectedExps([...selectedExps, exp.id]);
-                          } else {
-                            setSelectedExps(selectedExps.filter(id => id !== exp.id));
-                          }
-                        }}
-                      />
-                    </td>
-                    <td style={{ ...tdStyle, fontWeight: '500', textAlign: 'left' }}>{exp.code}</td>
-                    <td style={tdStyle}>{new Date(exp.date).toLocaleDateString()}</td>
-                    <td style={tdStyle}>{exp.author}</td>
-                    <td style={tdStyle}>
-                      <span style={{
-                        padding: '4px 8px',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        fontWeight: '500',
-                        backgroundColor: exp.status === 'invalid' ? '#FED7D7' : '#F0FFF4',
-                        color: exp.status === 'invalid' ? '#E53E3E' : '#38A169',
-                      }}>
-                        {exp.status}
-                      </span>
-                    </td>
-                    <td style={tdStyle}>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', maxWidth: '150px', alignItems: 'flex-start' }}>
-                        {exp.tags.slice(0, 2).map(tag => (
-                          <TagBadge key={tag} tag={tag} />
-                        ))}
-                        {exp.tags.length > 2 && (
-                          <span style={{
-                            padding: '4px 8px',
-                            borderRadius: '12px',
-                            fontSize: '11px',
-                            backgroundColor: '#EDF2F7',
-                            color: '#4A5568',
-                            whiteSpace: 'nowrap',
-                          }}>
-                            +{exp.tags.length - 2}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ 
-                      ...tdStyle, 
-                      color: exp.financial?.pnl > 0 ? '#38A169' : '#E53E3E',
-                      fontWeight: '600'
-                    }}>
-                      ${exp.financial?.pnl?.toFixed(2) || '0.00'}
-                    </td>
-                    <td style={{ ...tdStyle, color: '#38A169' }}>
-                      ${exp.financial?.profit?.toFixed(2) || '0.00'}
-                    </td>
-                    <td style={{ ...tdStyle, color: '#E53E3E' }}>
-                      ${exp.financial?.loss?.toFixed(2) || '0.00'}
-                    </td>
-                    <td style={tdStyle}>{exp.financial?.totalTrades || 0}</td>
-                    <td style={tdStyle}>
-                      <span style={{
-                        color: exp.financial?.winRate > 0.6 ? '#38A169' : 
-                               exp.financial?.winRate > 0.4 ? '#D69E2E' : '#E53E3E',
-                        fontWeight: '600'
-                      }}>
-                        {(exp.financial?.winRate * 100).toFixed(1) || '0.0'}%
-                      </span>
-                    </td>
-                    <td style={{ ...tdStyle, color: '#38A169' }}>
-                      ${exp.financial?.avgWin?.toFixed(2) || '0.00'}
-                    </td>
-                    <td style={{ ...tdStyle, color: '#E53E3E' }}>
-                      ${exp.financial?.avgLoss?.toFixed(2) || '0.00'}
-                    </td>
-                    <td style={{ 
-                      ...tdStyle, 
-                      color: exp.financial?.sharpeRatio > 1 ? '#38A169' : 
-                             exp.financial?.sharpeRatio > 0 ? '#D69E2E' : '#E53E3E'
-                    }}>
-                      {exp.financial?.sharpeRatio?.toFixed(3) || '0.000'}
-                    </td>
-                    <td style={{ ...tdStyle, color: '#E53E3E' }}>
-                      {(exp.financial?.maxDrawdown * 100).toFixed(1) || '0.0'}%
-                    </td>
-                    <td style={tdStyle}>
-                      {(exp.financial?.volatility * 100).toFixed(1) || '0.0'}%
-                    </td>
-                    <td style={tdStyle}>
-                      <div style={{ display: 'flex', gap: '8px', boxSizing: 'border-box', width: '100%' }}>
-                        <Button 
-                          variant="secondary" 
-                          onClick={() => window.location.href = `/comparison?exp=${exp.code}`}
-                          style={{ padding: '6px 12px', fontSize: '12px' }}
-                        >
-                          Compare
-                        </Button>
-                        <Button 
-                          variant="secondary" 
-                          onClick={() => window.location.href = `/info?exp=${exp.code}`}
-                          style={{ padding: '6px 12px', fontSize: '12px' }}
-                        >
-                          Details
-                        </Button>
-                        <Button 
-                          variant="secondary" 
-                          onClick={() => openEditModal(exp)}
-                          style={{ padding: '6px 12px', fontSize: '12px' }}
-                        >
-                          Edit
-                        </Button>
-                      </div>
-                    </td>
+                {headerRowsData.slice(1).map((row, rIdx) => (
+                  <tr key={`hr-${rIdx}`}>
+                    {row.map((cell, idx) => (
+                      <th key={`h${rIdx+2}-${idx}`} style={{ ...thStyle, backgroundColor: '#F0FFF4', borderRight: '1px solid #E2E8F0' }} colSpan={cell.colSpan} rowSpan={cell.rowSpan}>{cell.label}</th>
+                    ))}
                   </tr>
                 ))}
+              </thead>
+              <tbody>
+                {sortedExperiments.map(exp => {
+                  const improved = ensureArray(exp.improvements).length > 0;
+                  const url = improved ? getPlotsUrl(exp.code) : null;
+                  return (
+                    <tr 
+                      key={exp.id}
+                      style={{
+                        transition: 'background-color 0.2s ease',
+                        backgroundColor: exp.status === 'invalid' || !exp.isValid ? '#FFF5F5' : 'white',
+                        '&:hover': {
+                          backgroundColor: exp.status === 'invalid' || !exp.isValid ? '#FED7D7' : '#F7FAFC',
+                        },
+                      }}
+                    >
+                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedExps.includes(exp.id)}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setSelectedExps([...selectedExps, exp.id]);
+                            } else {
+                              setSelectedExps(selectedExps.filter(id => id !== exp.id));
+                            }
+                          }}
+                        />
+                      </td>
+                      <td style={{ ...tdStyle, fontWeight: '500', borderRight: '1px solid #F1F5F9' }}>
+                        {improved && url ? (
+                          <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#3182CE', textDecoration: 'underline' }}>{exp.code}</a>
+                        ) : (
+                          exp.code
+                        )}
+                      </td>
+                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>{new Date(exp.date).toLocaleDateString()}</td>
+                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>{exp.author}</td>
+                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          backgroundColor: exp.status === 'invalid' || !exp.isValid ? '#FED7D7' : '#F0FFF4',
+                          color: exp.status === 'invalid' || !exp.isValid ? '#E53E3E' : '#38A169',
+                        }}>
+                          {exp.status}
+                        </span>
+                      </td>
+                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', maxWidth: '150px', alignItems: 'flex-start' }}>
+                          {exp.tags.slice(0, 2).map(tag => (
+                            <TagBadge key={tag} tag={tag} />
+                          ))}
+                          {exp.tags.length > 2 && (
+                            <span style={{
+                              padding: '4px 8px',
+                              borderRadius: '12px',
+                              fontSize: '11px',
+                              backgroundColor: '#EDF2F7',
+                              color: '#4A5568',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              +{exp.tags.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      {leafOrderData.map(k => {
+                        const v = getByPath(exp.financial, k);
+                        const { text, style } = formatNumberCell(v);
+                        return (
+                          <td key={k} style={{ ...tdStyle, ...style, borderRight: '1px solid #F1F5F9' }}>
+                            {text}
+                          </td>
+                        );
+                      })}
+                      <td style={tdStyle}>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <Button 
+                            variant="secondary" 
+                            onClick={() => window.location.href = `/comparison?exp=${exp.code}`}
+                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                          >
+                            Compare
+                          </Button>
+                          <Button 
+                            variant="secondary" 
+                            onClick={() => window.location.href = `/info?exp=${exp.code}`}
+                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                          >
+                            Details
+                          </Button>
+                          <Button 
+                            variant="secondary" 
+                            onClick={() => openEditModal(exp)}
+                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                          >
+                            Edit
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -930,7 +982,7 @@ const ExperimentList = () => {
             }}>
               <thead>
                 <tr>
-                  <th style={{ ...thStyle, width: '40px' }}>
+                  <th style={{ ...thStyle, width: '40px', borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthMetrics}>
                     <input
                       type="checkbox"
                       onChange={e => {
@@ -938,258 +990,170 @@ const ExperimentList = () => {
                       }}
                     />
                   </th>
-                  <th style={{ ...thStyle, textAlign: 'left' }}>Code</th>
-                  <th style={{ ...thStyle }}>Date</th>
-                  <th style={{ ...thStyle }}>Status</th>
-                  <th style={{ ...thStyle }}>Tags</th>
+                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthMetrics}>Code</th>
+                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthMetrics}>Date</th>
+                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthMetrics}>Status</th>
+                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthMetrics}>Tags</th>
                   
-                  {/* Financial Metrics */}
-                  <th style={{ ...thStyle, backgroundColor: '#F0FFF4' }}>Total PnL</th>
-                  <th style={{ ...thStyle, backgroundColor: '#F0FFF4' }}>PnL Q1</th>
-                  <th style={{ ...thStyle, backgroundColor: '#F0FFF4' }}>PnL Q2</th>
-                  <th style={{ ...thStyle, backgroundColor: '#F0FFF4' }}>PnL Q3</th>
-                  <th style={{ ...thStyle, backgroundColor: '#F0FFF4' }}>PnL Q4</th>
-                  <th style={{ ...thStyle, backgroundColor: '#F0FFF4' }}>Win Rate</th>
-                  <th style={{ ...thStyle, backgroundColor: '#F0FFF4' }}>Sharpe</th>
-                  <th style={{ ...thStyle, backgroundColor: '#F0FFF4' }}>Max DD</th>
-                  <th style={{ ...thStyle, backgroundColor: '#F0FFF4' }}>Profit Factor</th>
-                  <th style={{ ...thStyle, backgroundColor: '#F0FFF4' }}>Calmar</th>
-                  <th style={{ ...thStyle, backgroundColor: '#F0FFF4' }}>Sortino</th>
+                  {/* Dynamic Financial Metrics from summary.json (average only) */}
+                  {headerRowsMetrics.length > 0 ? headerRowsMetrics[0].map((cell, idx) => (
+                    <th key={`mh1-${idx}`} style={{ ...thStyle, backgroundColor: '#F0FFF4', borderRight: '1px solid #E2E8F0' }} colSpan={cell.colSpan} rowSpan={cell.rowSpan}>{cell.label}</th>
+                  )) : null}
                   
                   {/* ML Metrics */}
-                  <th style={{ ...thStyle, backgroundColor: '#EBF8FF' }}>Precision</th>
-                  <th style={{ ...thStyle, backgroundColor: '#EBF8FF' }}>Recall</th>
-                  <th style={{ ...thStyle, backgroundColor: '#EBF8FF' }}>F1 Score</th>
-                  <th style={{ ...thStyle, backgroundColor: '#EBF8FF' }}>Accuracy</th>
+                  {/* <th style={{ ...thStyle, backgroundColor: '#EBF8FF', borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthMetrics}>Precision</th> */}
+                  {/* <th style={{ ...thStyle, backgroundColor: '#EBF8FF', borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthMetrics}>Recall</th> */}
+                  {/* <th style={{ ...thStyle, backgroundColor: '#EBF8FF', borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthMetrics}>F1 Score</th> */}
+                  {/* <th style={{ ...thStyle, backgroundColor: '#EBF8FF' }} rowSpan={headerDepthMetrics}>Accuracy</th> */}
                   
-                  {/* Validation Metrics */}
-                  <th style={{ ...thStyle, backgroundColor: '#FFF5F5' }}>Val Precision</th>
-                  <th style={{ ...thStyle, backgroundColor: '#FFF5F5' }}>Val Recall</th>
-                  <th style={{ ...thStyle, backgroundColor: '#FFF5F5' }}>Val F1</th>
-                  <th style={{ ...thStyle, backgroundColor: '#FFF5F5' }}>Val Accuracy</th>
-                  
-                  <th style={{ ...thStyle }}>Actions</th>
+                  <th style={{ ...thStyle }} rowSpan={headerDepthMetrics}>Actions</th>
                 </tr>
-              </thead>
-              <tbody>
-                {sortedExperiments.map(exp => (
-                  <tr 
-                    key={exp.id}
-                    style={{
-                      transition: 'background-color 0.2s ease',
-                      backgroundColor: exp.status === 'invalid' ? '#FFF5F5' : 'white',
-                      '&:hover': {
-                        backgroundColor: exp.status === 'invalid' ? '#FED7D7' : '#F7FAFC',
-                      },
-                    }}
-                  >
-                    <td style={tdStyle}>
-                      <input
-                        type="checkbox"
-                        checked={selectedExps.includes(exp.id)}
-                        onChange={e => {
-                          if (e.target.checked) {
-                            setSelectedExps([...selectedExps, exp.id]);
-                          } else {
-                            setSelectedExps(selectedExps.filter(id => id !== exp.id));
-                          }
-                        }}
-                      />
-                    </td>
-                    <td style={{ ...tdStyle, fontWeight: '500', textAlign: 'left' }}>{exp.code}</td>
-                    <td style={tdStyle}>{new Date(exp.date).toLocaleDateString()}</td>
-                    <td style={tdStyle}>
-                      <span style={{
-                        padding: '4px 8px',
-                        borderRadius: '12px',
-                        fontSize: '11px',
-                        fontWeight: '500',
-                        backgroundColor: exp.status === 'invalid' ? '#FED7D7' : '#F0FFF4',
-                        color: exp.status === 'invalid' ? '#E53E3E' : '#38A169',
-                      }}>
-                        {exp.status}
-                      </span>
-                    </td>
-                    <td style={tdStyle}>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', maxWidth: '120px', alignItems: 'flex-start' }}>
-                        {exp.tags.slice(0, 2).map(tag => (
-                          <TagBadge key={tag} tag={tag} />
-                        ))}
-                        {exp.tags.length > 2 && (
-                          <span style={{
-                            padding: '4px 8px',
-                            borderRadius: '12px',
-                            fontSize: '11px',
-                            backgroundColor: '#EDF2F7',
-                            color: '#4A5568',
-                            whiteSpace: 'nowrap',
-                          }}>
-                            +{exp.tags.length - 2}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    
-                    {/* Financial Metrics */}
-                    <td style={{ 
-                      ...tdStyle, 
-                      color: exp.financial?.pnl > 0 ? '#38A169' : '#E53E3E',
-                      fontWeight: '600'
-                    }}>
-                      ${exp.financial?.pnl?.toFixed(2) || '0.00'}
-                    </td>
-                    <td style={{ 
-                      ...tdStyle, 
-                      color: exp.financial?.pnlQ1 > 0 ? '#38A169' : '#E53E3E'
-                    }}>
-                      ${exp.financial?.pnlQ1?.toFixed(2) || '0.00'}
-                    </td>
-                    <td style={{ 
-                      ...tdStyle, 
-                      color: exp.financial?.pnlQ2 > 0 ? '#38A169' : '#E53E3E'
-                    }}>
-                      ${exp.financial?.pnlQ2?.toFixed(2) || '0.00'}
-                    </td>
-                    <td style={{ 
-                      ...tdStyle, 
-                      color: exp.financial?.pnlQ3 > 0 ? '#38A169' : '#E53E3E'
-                    }}>
-                      ${exp.financial?.pnlQ3?.toFixed(2) || '0.00'}
-                    </td>
-                    <td style={{ 
-                      ...tdStyle, 
-                      color: exp.financial?.pnlQ4 > 0 ? '#38A169' : '#E53E3E'
-                    }}>
-                      ${exp.financial?.pnlQ4?.toFixed(2) || '0.00'}
-                    </td>
-                    <td style={tdStyle}>
-                      <span style={{
-                        color: exp.financial?.winRate > 0.6 ? '#38A169' : 
-                               exp.financial?.winRate > 0.4 ? '#D69E2E' : '#E53E3E',
-                        fontWeight: '600'
-                      }}>
-                        {(exp.financial?.winRate * 100).toFixed(1) || '0.0'}%
-                      </span>
-                    </td>
-                    <td style={{ 
-                      ...tdStyle, 
-                      color: exp.financial?.sharpeRatio > 1 ? '#38A169' : 
-                             exp.financial?.sharpeRatio > 0 ? '#D69E2E' : '#E53E3E'
-                    }}>
-                      {exp.financial?.sharpeRatio?.toFixed(3) || '0.000'}
-                    </td>
-                    <td style={{ ...tdStyle, color: '#E53E3E' }}>
-                      {(exp.financial?.maxDrawdown * 100).toFixed(1) || '0.0'}%
-                    </td>
-                    <td style={{ 
-                      ...tdStyle, 
-                      color: exp.financial?.profitFactor > 1.5 ? '#38A169' : 
-                             exp.financial?.profitFactor > 1 ? '#D69E2E' : '#E53E3E'
-                    }}>
-                      {exp.financial?.profitFactor?.toFixed(2) || '0.00'}
-                    </td>
-                    <td style={{ 
-                      ...tdStyle, 
-                      color: exp.financial?.calmarRatio > 0.5 ? '#38A169' : 
-                             exp.financial?.calmarRatio > 0 ? '#D69E2E' : '#E53E3E'
-                    }}>
-                      {exp.financial?.calmarRatio?.toFixed(3) || '0.000'}
-                    </td>
-                    <td style={{ 
-                      ...tdStyle, 
-                      color: exp.financial?.sortinoRatio > 1 ? '#38A169' : 
-                             exp.financial?.sortinoRatio > 0 ? '#D69E2E' : '#E53E3E'
-                    }}>
-                      {exp.financial?.sortinoRatio?.toFixed(3) || '0.000'}
-                    </td>
-                    
-                    {/* ML Metrics */}
-                    <td style={{ 
-                      ...tdStyle, 
-                      color: exp.mlMetrics?.precision > 0.7 ? '#38A169' : 
-                             exp.mlMetrics?.precision > 0.5 ? '#D69E2E' : '#E53E3E'
-                    }}>
-                      {(exp.mlMetrics?.precision * 100).toFixed(1) || '0.0'}%
-                    </td>
-                    <td style={{ 
-                      ...tdStyle, 
-                      color: exp.mlMetrics?.recall > 0.7 ? '#38A169' : 
-                             exp.mlMetrics?.recall > 0.5 ? '#D69E2E' : '#E53E3E'
-                    }}>
-                      {(exp.mlMetrics?.recall * 100).toFixed(1) || '0.0'}%
-                    </td>
-                    <td style={{ 
-                      ...tdStyle, 
-                      color: exp.mlMetrics?.f1Score > 0.7 ? '#38A169' : 
-                             exp.mlMetrics?.f1Score > 0.5 ? '#D69E2E' : '#E53E3E'
-                    }}>
-                      {(exp.mlMetrics?.f1Score * 100).toFixed(1) || '0.0'}%
-                    </td>
-                    <td style={{ 
-                      ...tdStyle, 
-                      color: exp.mlMetrics?.accuracy > 0.7 ? '#38A169' : 
-                             exp.mlMetrics?.accuracy > 0.5 ? '#D69E2E' : '#E53E3E'
-                    }}>
-                      {(exp.mlMetrics?.accuracy * 100).toFixed(1) || '0.0'}%
-                    </td>
-                    
-                    {/* Validation Metrics */}
-                    <td style={{ 
-                      ...tdStyle, 
-                      color: exp.mlMetrics?.validationPrecision > 0.7 ? '#38A169' : 
-                             exp.mlMetrics?.validationPrecision > 0.5 ? '#D69E2E' : '#E53E3E'
-                    }}>
-                      {(exp.mlMetrics?.validationPrecision * 100).toFixed(1) || '0.0'}%
-                    </td>
-                    <td style={{ 
-                      ...tdStyle, 
-                      color: exp.mlMetrics?.validationRecall > 0.7 ? '#38A169' : 
-                             exp.mlMetrics?.validationRecall > 0.5 ? '#D69E2E' : '#E53E3E'
-                    }}>
-                      {(exp.mlMetrics?.validationRecall * 100).toFixed(1) || '0.0'}%
-                    </td>
-                    <td style={{ 
-                      ...tdStyle, 
-                      color: exp.mlMetrics?.validationF1 > 0.7 ? '#38A169' : 
-                             exp.mlMetrics?.validationF1 > 0.5 ? '#D69E2E' : '#E53E3E'
-                    }}>
-                      {(exp.mlMetrics?.validationF1 * 100).toFixed(1) || '0.0'}%
-                    </td>
-                    <td style={{ 
-                      ...tdStyle, 
-                      color: exp.mlMetrics?.validationAccuracy > 0.7 ? '#38A169' : 
-                             exp.mlMetrics?.validationAccuracy > 0.5 ? '#D69E2E' : '#E53E3E'
-                    }}>
-                      {(exp.mlMetrics?.validationAccuracy * 100).toFixed(1) || '0.0'}%
-                    </td>
-                    
-                    <td style={tdStyle}>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <Button 
-                          variant="secondary" 
-                          onClick={() => window.location.href = `/comparison?exp=${exp.code}`}
-                          style={{ padding: '6px 12px', fontSize: '12px' }}
-                        >
-                          Compare
-                        </Button>
-                        <Button 
-                          variant="secondary" 
-                          onClick={() => window.location.href = `/info?exp=${exp.code}`}
-                          style={{ padding: '6px 12px', fontSize: '12px' }}
-                        >
-                          Details
-                        </Button>
-                        <Button 
-                          variant="secondary" 
-                          onClick={() => openEditModal(exp)}
-                          style={{ padding: '6px 12px', fontSize: '12px' }}
-                        >
-                          Edit
-                        </Button>
-                      </div>
-                    </td>
+                {headerRowsMetrics.slice(1).map((row, rIdx) => (
+                  <tr key={`mhr-${rIdx}`}>
+                    {row.map((cell, idx) => (
+                      <th key={`mh${rIdx+2}-${idx}`} style={{ ...thStyle, backgroundColor: '#F0FFF4', borderRight: '1px solid #E2E8F0' }} colSpan={cell.colSpan} rowSpan={cell.rowSpan}>{cell.label}</th>
+                    ))}
                   </tr>
                 ))}
+              </thead>
+              <tbody>
+                {sortedExperiments.map(exp => {
+                  const improved = ensureArray(exp.improvements).length > 0;
+                  const url = improved ? getPlotsUrl(exp.code) : null;
+                  return (
+                    <tr 
+                      key={exp.id}
+                      style={{
+                        transition: 'background-color 0.2s ease',
+                        backgroundColor: exp.status === 'invalid' || !exp.isValid ? '#FFF5F5' : 'white',
+                        '&:hover': {
+                          backgroundColor: exp.status === 'invalid' || !exp.isValid ? '#FED7D7' : '#F7FAFC',
+                        },
+                      }}
+                    >
+                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedExps.includes(exp.id)}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setSelectedExps([...selectedExps, exp.id]);
+                            } else {
+                              setSelectedExps(selectedExps.filter(id => id !== exp.id));
+                            }
+                          }}
+                        />
+                      </td>
+                      <td style={{ ...tdStyle, fontWeight: '500', borderRight: '1px solid #F1F5F9' }}>
+                        {improved && url ? (
+                          <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#3182CE', textDecoration: 'underline' }}>{exp.code}</a>
+                        ) : (
+                          exp.code
+                        )}
+                      </td>
+                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>{new Date(exp.date).toLocaleDateString()}</td>
+                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '12px',
+                          fontSize: '11px',
+                          fontWeight: '500',
+                          backgroundColor: exp.status === 'invalid' || !exp.isValid ? '#FED7D7' : '#F0FFF4',
+                          color: exp.status === 'invalid' || !exp.isValid ? '#E53E3E' : '#38A169',
+                        }}>
+                          {exp.status}
+                        </span>
+                      </td>
+                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', maxWidth: '120px', alignItems: 'flex-start' }}>
+                          {exp.tags.slice(0, 2).map(tag => (
+                            <TagBadge key={tag} tag={tag} />
+                          ))}
+                          {exp.tags.length > 2 && (
+                            <span style={{
+                              padding: '4px 8px',
+                              borderRadius: '12px',
+                              fontSize: '11px',
+                              backgroundColor: '#EDF2F7',
+                              color: '#4A5568',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              +{exp.tags.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      {leafOrderMetrics.map(k => {
+                        const v = getByPath(exp.financial, k);
+                        const { text, style } = formatNumberCell(v);
+                        return (
+                          <td key={k} style={{ ...tdStyle, ...style, borderRight: '1px solid #F1F5F9' }}>
+                            {text}
+                          </td>
+                        );
+                      })}
+                      
+                      {/* ML Metrics */}
+                      {/* <td style={{ 
+                        ...tdStyle, 
+                        color: exp.mlMetrics?.precision > 0.7 ? '#38A169' : 
+                               exp.mlMetrics?.precision > 0.5 ? '#D69E2E' : '#E53E3E',
+                        borderRight: '1px solid #F1F5F9'
+                      }}>
+                        {(exp.mlMetrics?.precision * 100).toFixed(1) || '0.0'}%
+                      </td>
+                      <td style={{ 
+                        ...tdStyle, 
+                        color: exp.mlMetrics?.recall > 0.7 ? '#38A169' : 
+                               exp.mlMetrics?.recall > 0.5 ? '#D69E2E' : '#E53E3E',
+                        borderRight: '1px solid #F1F5F9'
+                      }}>
+                        {(exp.mlMetrics?.recall * 100).toFixed(1) || '0.0'}%
+                      </td>
+                      <td style={{ 
+                        ...tdStyle, 
+                        color: exp.mlMetrics?.f1Score > 0.7 ? '#38A169' : 
+                               exp.mlMetrics?.f1Score > 0.5 ? '#D69E2E' : '#E53E3E',
+                        borderRight: '1px solid #F1F5F9'
+                      }}>
+                        {(exp.mlMetrics?.f1Score * 100).toFixed(1) || '0.0'}%
+                      </td>
+                      <td style={{ 
+                        ...tdStyle, 
+                        color: exp.mlMetrics?.accuracy > 0.7 ? '#38A169' : 
+                               exp.mlMetrics?.accuracy > 0.5 ? '#D69E2E' : '#E53E3E'
+                      }}>
+                        {(exp.mlMetrics?.accuracy * 100).toFixed(1) || '0.0'}%
+                      </td> */}
+                      
+                      <td style={tdStyle}>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <Button 
+                            variant="secondary" 
+                            onClick={() => window.location.href = `/comparison?exp=${exp.code}`}
+                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                          >
+                            Compare
+                          </Button>
+                          <Button 
+                            variant="secondary" 
+                            onClick={() => window.location.href = `/info?exp=${exp.code}`}
+                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                          >
+                            Details
+                          </Button>
+                          <Button 
+                            variant="secondary" 
+                            onClick={() => openEditModal(exp)}
+                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                          >
+                            Edit
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -1263,12 +1227,9 @@ const ExperimentList = () => {
                   return;
                 }
                 const ids = selectedExps.slice(0, 2);
-                console.log(ids);
-                console.log(experiments);
                 // Map selected ids to experiment codes
-                const idToExp = new Map(experiments.map(e => [(e.code ?? e.id), e]));
+                const idToExp = new Map(experiments.map(e => [(e.pk ?? e.id), e]));
                 const codes = ids.map(id => idToExp.get(id)?.code).filter(Boolean);
-                console.log(codes);
                 if (codes.length < 2) {
                   alert('Could not resolve selected experiments.');
                   return;

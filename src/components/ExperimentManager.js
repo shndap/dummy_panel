@@ -53,6 +53,11 @@ function normalizeExperiment(exp) {
   };
 }
 
+function getPlotsUrl(code) {
+  if (!code) return null;
+  return `https://trader-results.roshan-ai.ir/fulltest_cache/${encodeURIComponent(code)}_FullTest/plots.html`;
+}
+
 const Card = ({ title, value, color, expName, date }) => {
   // Format value to 5 decimals if it's a number
   let displayValue = value;
@@ -130,13 +135,14 @@ const ExperimentManager = () => {
     try {
       const { results } = await getImprovedExperiments({ limit: 50, page: 1 });
       const normalized = (results || []).map(normalizeExperiment);
-      setExperiments(normalized.filter(exp => ensureArray(exp.improvements).length > 0));
+      setExperiments(normalized.filter(exp => ensureArray(exp.improvements).length > 0 && exp.isValid));
       // Flatten all goals into a single array
       // Group goals by goal_type and filter valid: true
       // Collect goals by type, include exp.name with goal.value, and ensure open/close/reg are present
       const types = ['open', 'close', 'reg'];
       const goalsByType = normalized
         .filter(exp => ensureArray(exp.improvements).length > 0)
+        .filter(exp => exp.isValid)
         .flatMap(exp =>
           ensureArray(exp.goals).map(goal => ({
             ...goal,
@@ -144,7 +150,6 @@ const ExperimentManager = () => {
             expDate: exp.created_at || exp.date || null
           }))
         )
-        // .filter(goal => goal && goal.valid === true)
         .reduce((acc, goal) => {
           const type = goal.goal_type || 'unknown';
           if (!acc[type]) acc[type] = [];
@@ -421,7 +426,29 @@ const ExperimentManager = () => {
                     borderRadius: '0 4px 4px 0'
                   }}
                 >
-                  <div style={{ fontWeight: 'bold' }}>{exp.code}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontWeight: 'bold', color: '#2D3748' }}>{exp.code}</div>
+                    <button
+                      onClick={() => { const u = getPlotsUrl(exp.code); if (u) window.open(u, '_blank', 'noopener'); }}
+                      title="Open plots"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                          d="M6 4h9a3 3 0 013 3v11a2 2 0 01-2 2H8a2 2 0 01-2-2V6a2 2 0 012-2z"
+                          stroke="#2F855A"
+                          strokeWidth="2"
+                        />
+                        <path d="M15 4c0 1.657 1.343 3 3 3" stroke="#2F855A" strokeWidth="2" />
+                        <path
+                          d="M9 10h6M9 14h6"
+                          stroke="#2F855A"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </button>
+                  </div>
                   <div style={{ fontSize: '12px', color: '#4A5568' }}>{exp.description}</div>
                   <div style={{ marginTop: '6px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                     {ensureArray(exp.improvements).map((imp, idx) => (
