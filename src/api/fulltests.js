@@ -1,4 +1,5 @@
 import { apiFetch, buildQueryString } from './client';
+import { getExperimentValue } from './dashboard';
 
 // GET /api/fulltests/frontend_list/
 export async function getFrontendExperiments(params = {}) {
@@ -9,10 +10,63 @@ export async function getFrontendExperiments(params = {}) {
   return { results, count, raw };
 }
 
+// GET /api/fulltests/frontend_improved/
+export async function getImprovedExperiments(params = {}) {
+  const qs = buildQueryString(params);
+  const raw = await apiFetch(`/api/fulltests/frontend_improved/${qs}`);
+  const results = raw?.results ?? raw?.data?.experiments ?? raw?.data ?? [];
+  const count = raw?.count ?? raw?.data?.pagination?.totalItems ?? (Array.isArray(results) ? results.length : 0);
+  return { results, count, raw };
+}
+
 // GET /api/fulltests/
 export async function listFulltests(params = {}) {
   const qs = buildQueryString(params);
   return apiFetch(`/api/fulltests/${qs}`);
+}
+
+// POST /api/fulltests/{id}/add_improvement/
+export async function postAddImprovement(id, improvement) {
+  return apiFetch(`/api/fulltests/${id}/add_improvement/`, {
+    method: 'POST',
+    body: JSON.stringify({ improvement }),
+  });
+}
+
+// POST /api/fulltests/{id}/remove_improvement/
+export async function postRemoveImprovement(id, improvement) {
+  return apiFetch(`/api/fulltests/${id}/remove_improvement/`, {
+    method: 'POST',
+    body: JSON.stringify({ improvement }),
+  });
+}
+
+// Convenience: add improvement then fetch experiment value
+export async function addImprovement(id, improvement, expName) {
+  await postAddImprovement(id, improvement);
+  const goalType = String(improvement || '').toLowerCase();
+  if (expName && ['open', 'close', 'reg'].includes(goalType)) {
+    try {
+      return await getExperimentValue(expName, goalType);
+    } catch (e) {
+      return null;
+    }
+  }
+  return null;
+}
+
+// Convenience: remove improvement then fetch experiment value (optional)
+export async function removeImprovement(id, improvement, expName) {
+  await postRemoveImprovement(id, improvement);
+  const goalType = String(improvement || '').toLowerCase();
+  if (expName && ['open', 'close', 'reg'].includes(goalType)) {
+    try {
+      return await getExperimentValue(expName, goalType);
+    } catch (e) {
+      return null;
+    }
+  }
+  return null;
 }
 
 // POST /api/fulltests/
@@ -39,22 +93,6 @@ export async function startFulltest(id) {
 // POST /api/fulltests/{id}/stop/
 export async function stopFulltest(id) {
   return apiFetch(`/api/fulltests/${id}/stop/`, { method: 'POST' });
-}
-
-// POST /api/fulltests/{id}/add_improvement/
-export async function addImprovement(id, improvement) {
-  return apiFetch(`/api/fulltests/${id}/add_improvement/`, {
-    method: 'POST',
-    body: JSON.stringify({ improvement }),
-  });
-}
-
-// POST /api/fulltests/{id}/remove_improvement/
-export async function removeImprovement(id, improvement) {
-  return apiFetch(`/api/fulltests/${id}/remove_improvement/`, {
-    method: 'POST',
-    body: JSON.stringify({ improvement }),
-  });
 }
 
 // GET /api/fulltests/{id}/logs/

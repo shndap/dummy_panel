@@ -80,7 +80,6 @@ const ExperimentList = () => {
         });
         const normalized = (results || []).map(normalizeExperiment);
         setExperiments(normalized);
-        console.log(normalized);
         setTotalCount(typeof count === 'number' ? count : normalized.length);
       } catch (e) {
         setError(e.data || e.message || 'Failed to load experiments');
@@ -423,10 +422,9 @@ const ExperimentList = () => {
       const toRemove = before.filter(x => !after.includes(x));
 
       await Promise.all([
-        ...toAdd.map(imp => addImprovement(entityId, imp)),
-        ...toRemove.map(imp => removeImprovement(entityId, imp)),
+        ...toAdd.map(imp => addImprovement(entityId, imp, editingExperiment.code || editingExperiment.name)),
+        ...toRemove.map(imp => removeImprovement(entityId, imp, editingExperiment.code || editingExperiment.name)),
       ]);
-      console.log(editForm);
 
       setExperiments(prev => prev.map(exp => {
         if ((exp.pk ?? exp.id) !== entityId) return exp;

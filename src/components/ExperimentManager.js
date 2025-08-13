@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -10,7 +10,8 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { getFrontendExperiments, listFulltests } from '../api/fulltests';
+import { getImprovedExperiments } from '../api/fulltests';
+import { migrateData } from '../api/dashboard';
 
 ChartJS.register(
   CategoryScale,
@@ -52,36 +53,68 @@ function normalizeExperiment(exp) {
   };
 }
 
-const Card = ({ title, value, color }) => (
-  <div 
-    style={{ 
-      flex: 1, 
-      margin: '10px', 
-      padding: '20px', 
-      background: 'white',
-      borderRadius: '8px',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-      textAlign: 'center',
-      border: `1px solid ${color}`,
-    }}
-  >
-    <h3 style={{ color: color, marginTop: 0 }}>{title}</h3>
-    <p style={{ 
-      fontSize: '24px', 
-      fontWeight: 'bold',
-      color: color,
-      margin: '10px 0' 
-    }}>
-      {value}
-    </p>
-  </div>
-);
+const Card = ({ title, value, color, expName, date }) => {
+  // Format value to 5 decimals if it's a number
+  let displayValue = value;
+  if (typeof value === 'number') {
+    displayValue = value.toFixed(5);
+  } else if (!isNaN(Number(value))) {
+    displayValue = Number(value).toFixed(5);
+  }
+
+  // Better date handling
+  let displayDate = '';
+  if (date) {
+    const d = new Date(date);
+    if (!isNaN(d.getTime())) {
+      // Format: YYYY-MM-DD HH:mm (24h)
+      const pad = n => n.toString().padStart(2, '0');
+      displayDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } else if (typeof date === 'string') {
+      displayDate = date;
+    }
+  }
+
+  return (
+    <div 
+      style={{ 
+        flex: 1, 
+        margin: '10px', 
+        padding: '20px', 
+        background: 'white',
+        borderRadius: '8px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        textAlign: 'center',
+        border: `1px solid ${color}`,
+      }}
+    >
+      <h3 style={{ color: color, marginTop: 0 }}>{title}</h3>
+      <p style={{ 
+        fontSize: '24px', 
+        fontWeight: 'bold',
+        color: color,
+        margin: '10px 0' 
+      }}>
+        {displayValue}
+      </p>
+      {(expName || displayDate) && (
+        <div style={{ fontSize: '12px', color: '#888', marginTop: '-8px' }}>
+          {expName && <div>{expName}</div>}
+          {displayDate && <div>{displayDate}</div>}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const ExperimentManager = () => {
   const chartRef = useRef(null);
   const [experiments, setExperiments] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [maxGoalsByType, setMaxGoalsByType] = useState({});
+  const [GoalsByType, setGoalsByType] = useState({});
+  const [isMigrating, setIsMigrating] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -91,64 +124,164 @@ const ExperimentManager = () => {
     };
   }, []);
 
+  async function loadExperiments() {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { results } = await getImprovedExperiments({ limit: 50, page: 1 });
+      const normalized = (results || []).map(normalizeExperiment);
+      setExperiments(normalized.filter(exp => ensureArray(exp.improvements).length > 0));
+      // Flatten all goals into a single array
+      // Group goals by goal_type and filter valid: true
+      // Collect goals by type, include exp.name with goal.value, and ensure open/close/reg are present
+      const types = ['open', 'close', 'reg'];
+      const goalsByType = normalized
+        .filter(exp => ensureArray(exp.improvements).length > 0)
+        .flatMap(exp =>
+          ensureArray(exp.goals).map(goal => ({
+            ...goal,
+            expName: exp.code,
+            expDate: exp.created_at || exp.date || null
+          }))
+        )
+        // .filter(goal => goal && goal.valid === true)
+        .reduce((acc, goal) => {
+          const type = goal.goal_type || 'unknown';
+          if (!acc[type]) acc[type] = [];
+          acc[type].push({ 
+            value: goal.value, 
+            expName: goal.expName, 
+            date: goal.expDate 
+          });
+          return acc;
+        }, {});
+
+      // Ensure open, close, reg keys exist (even if empty)
+      types.forEach(type => {
+        if (!goalsByType[type]) goalsByType[type] = [];
+      });
+
+      // Extract the max value for each type, along with its date and expName
+      const maxGoalsByType = {};
+      types.forEach(type => {
+        const arr = goalsByType[type];
+        if (arr.length > 0) {
+          const maxGoal = arr.reduce((max, curr) => 
+            (max == null || (curr.value != null && curr.value > max.value)) ? curr : max
+          , null);
+          maxGoalsByType[type] = maxGoal;
+        } else {
+          maxGoalsByType[type] = null;
+        }
+      });
+      setMaxGoalsByType(maxGoalsByType);
+      setGoalsByType(goalsByType);
+    } catch (e) {
+      setError(e.data || e.message || 'Failed to load experiments');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   useEffect(() => {
     let mounted = true;
-    async function load() {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const { results } = await listFulltests({});
-        const normalized = (results || []).map(normalizeExperiment);
-        console.log(normalized.filter(exp => ensureArray(exp.improvements).length > 0));
-        if (mounted) setExperiments(normalized);
-      } catch (e) {
-        if (mounted) setError(e.data || e.message || 'Failed to load experiments');
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    }
-    load();
+    (async () => {
+      await loadExperiments();
+    })();
     return () => { mounted = false; };
   }, []);
 
-  // Baseline values for the tests (optional: could compute from data)
-  const baselineData = {
-    open: 200,
-    close: 150,
-    reg: 180,
+  const onRefreshClick = async () => {
+    setIsMigrating(true);
+    setError(null);
+    try {
+      await migrateData();
+      await loadExperiments();
+    } catch (e) {
+      setError(e.data || e.message || 'Failed to refresh experiments');
+    } finally {
+      setIsMigrating(false);
+    }
   };
 
-  // Dummy data for the chart (kept for now)
-  const chartLabels = ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5'];
-  const data = {
-    labels: chartLabels,
-    datasets: [
-      {
-        label: 'Open',
-        data: [200, 205, 210, 208, 207],
-        borderColor: 'rgba(75,192,192,1)',
-        backgroundColor: 'rgba(75,192,192,0.2)',
-        fill: true,
-        tension: 0.4
-      },
-      {
-        label: 'Close',
-        data: [150, 152, 149, 151, 150],
-        borderColor: 'rgba(255,99,132,1)',
-        backgroundColor: 'rgba(255,99,132,0.2)',
-        fill: true,
-        tension: 0.4
-      },
-      {
-        label: 'Reg',
-        data: [180, 182, 181, 183, 185],
-        borderColor: 'rgba(54,162,235,1)',
-        backgroundColor: 'rgba(54,162,235,0.2)',
-        fill: true,
-        tension: 0.4
-      },
-    ],
-  };
+  // Build chart data from goals by type
+  const chartData = useMemo(() => {
+    // Collect unique timestamps (ms) from all types
+    const toTs = (d) => {
+      if (!d) return null;
+      const t = new Date(d).getTime();
+      return isNaN(t) ? null : t;
+    };
+    const tsSet = new Set();
+    ['open', 'close', 'reg'].forEach(type => {
+      const arr = GoalsByType[type] || [];
+      arr.forEach(({ date }) => {
+        const ts = toTs(date);
+        if (ts != null) tsSet.add(ts);
+      });
+    });
+    let labelsTs = Array.from(tsSet).sort((a, b) => a - b);
+    // Limit to most recent 50 points for readability
+    if (labelsTs.length > 50) labelsTs = labelsTs.slice(-50);
+
+    const formatLabel = (ts) => {
+      const d = new Date(ts);
+      const pad = n => n.toString().padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+    const labels = labelsTs.map(formatLabel);
+
+    const buildSeries = (type) => {
+      const map = {};
+      (GoalsByType[type] || []).forEach(({ date, value }) => {
+        const ts = toTs(date);
+        if (ts != null) map[ts] = Number(value);
+      });
+      return labelsTs.map(ts => (ts in map ? map[ts] : null));
+    };
+
+    const buildNameSeries = (type) => {
+      const map = {};
+      (GoalsByType[type] || []).forEach(({ date, expName }) => {
+        const ts = toTs(date);
+        if (ts != null) map[ts] = expName;
+      });
+      return labelsTs.map(ts => (ts in map ? map[ts] : ''));
+    };
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Open',
+          data: buildSeries('open'),
+          borderColor: 'rgba(75,192,192,1)',
+          backgroundColor: 'rgba(75,192,192,0.2)',
+          fill: true,
+          tension: 0.4,
+          pointExpNames: buildNameSeries('open'),
+        },
+        {
+          label: 'Close',
+          data: buildSeries('close'),
+          borderColor: 'rgba(255,99,132,1)',
+          backgroundColor: 'rgba(255,99,132,0.2)',
+          fill: true,
+          tension: 0.4,
+          pointExpNames: buildNameSeries('close'),
+        },
+        {
+          label: 'Reg',
+          data: buildSeries('reg'),
+          borderColor: 'rgba(54,162,235,1)',
+          backgroundColor: 'rgba(54,162,235,0.2)',
+          fill: true,
+          tension: 0.4,
+          pointExpNames: buildNameSeries('reg'),
+        },
+      ],
+    };
+  }, [GoalsByType]);
 
   const options = {
     responsive: true,
@@ -156,6 +289,19 @@ const ExperimentManager = () => {
     plugins: {
       legend: { position: 'top' },
       title: { display: true, text: 'Mean Values Over Time', font: { size: 16 } },
+      tooltip: {
+        callbacks: {
+          label: function(ctx) {
+            const y = ctx.parsed.y;
+            const parts = [];
+            if (y != null) parts.push(`${ctx.dataset.label}: ${y}`);
+            const name = (ctx.dataset.pointExpNames || [])[ctx.dataIndex];
+            if (name) parts.push(`Exp: ${name}`);
+            // Use array for multi-line, not join('\n'), for Chart.js v3+ compatibility
+            return parts;
+          }
+        }
+      }
     },
     scales: {
       y: { beginAtZero: false, grid: { color: 'rgba(0,0,0,0.05)' } },
@@ -175,9 +321,26 @@ const ExperimentManager = () => {
         color: '#333',
         borderBottom: '2px solid #eee',
         paddingBottom: '10px',
-        marginBottom: '20px'
+        marginBottom: '20px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
       }}>
-        Experiment Manager (Improvements)
+        <span>Experiment Manager (Improvements)</span>
+        <button
+          onClick={onRefreshClick}
+          disabled={isMigrating}
+          style={{
+            padding: '8px 12px',
+            borderRadius: '6px',
+            border: '1px solid #CBD5E0',
+            background: isMigrating ? '#EDF2F7' : 'white',
+            cursor: isMigrating ? 'not-allowed' : 'pointer',
+            fontSize: '13px'
+          }}
+        >
+          {isMigrating ? 'Refreshing…' : 'Refresh'}
+        </button>
       </h2>
 
       {/* Baseline Cards */}
@@ -186,9 +349,27 @@ const ExperimentManager = () => {
         justifyContent: 'space-between', 
         marginBottom: '20px'
       }}>
-        <Card title="Open" value={baselineData.open} color="rgb(75,192,192)" />
-        <Card title="Close" value={baselineData.close} color="rgb(255,99,132)" />
-        <Card title="Reg" value={baselineData.reg} color="rgb(54,162,235)" />
+        <Card 
+          title="Open" 
+          value={maxGoalsByType.open?.value} 
+          color="rgb(75,192,192)" 
+          expName={maxGoalsByType.open?.expName}
+          date={maxGoalsByType.open?.date}
+        />
+        <Card 
+          title="Close" 
+          value={maxGoalsByType.close?.value} 
+          color="rgb(255,99,132)" 
+          expName={maxGoalsByType.close?.expName}
+          date={maxGoalsByType.close?.date}
+        />
+        <Card 
+          title="Reg" 
+          value={maxGoalsByType.reg?.value} 
+          color="rgb(54,162,235)" 
+          expName={maxGoalsByType.reg?.expName}
+          date={maxGoalsByType.reg?.date}
+        />
       </div>
 
       <div style={{ 
@@ -240,7 +421,7 @@ const ExperimentManager = () => {
                     borderRadius: '0 4px 4px 0'
                   }}
                 >
-                  <div style={{ fontWeight: 'bold' }}>{exp.name}</div>
+                  <div style={{ fontWeight: 'bold' }}>{exp.code}</div>
                   <div style={{ fontSize: '12px', color: '#4A5568' }}>{exp.description}</div>
                   <div style={{ marginTop: '6px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                     {ensureArray(exp.improvements).map((imp, idx) => (
@@ -267,7 +448,7 @@ const ExperimentManager = () => {
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
           height: '400px'
         }}>
-          <Line ref={chartRef} data={data} options={options} />
+          <Line ref={chartRef} data={chartData} options={options} />
         </div>
       </div>
     </div>
