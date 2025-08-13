@@ -766,11 +766,7 @@ const ExperimentList = () => {
                         />
                       </td>
                       <td style={{ ...tdStyle, fontWeight: '500', textAlign: 'left', borderRight: '1px solid #F1F5F9' }}>
-                        {improved && url ? (
-                          <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#3182CE', textDecoration: 'underline' }}>{exp.code}</a>
-                        ) : (
-                          exp.code
-                        )}
+                        {exp.code}
                       </td>
                       <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>{new Date(exp.date).toLocaleDateString()}</td>
                       <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>{exp.author}</td>

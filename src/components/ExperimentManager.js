@@ -434,18 +434,9 @@ const ExperimentManager = () => {
                       style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                     >
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path
-                          d="M6 4h9a3 3 0 013 3v11a2 2 0 01-2 2H8a2 2 0 01-2-2V6a2 2 0 012-2z"
-                          stroke="#2F855A"
-                          strokeWidth="2"
-                        />
-                        <path d="M15 4c0 1.657 1.343 3 3 3" stroke="#2F855A" strokeWidth="2" />
-                        <path
-                          d="M9 10h6M9 14h6"
-                          stroke="#2F855A"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                        />
+                        <path d="M14 3h7v7" stroke="#3182CE" strokeWidth="2" strokeLinecap="round"/>
+                        <path d="M10 14L21 3" stroke="#3182CE" strokeWidth="2" strokeLinecap="round"/>
+                        <path d="M21 14v6a1 1 0 0 1-1 1h-14a1 1 0 0 1-1-1v-14a1 1 0 0 1 1-1h6" stroke="#3182CE" strokeWidth="2"/>
                       </svg>
                     </button>
                   </div>

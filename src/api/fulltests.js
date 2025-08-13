@@ -31,6 +31,14 @@ export async function listFulltests(params = {}) {
   return apiFetch(`/api/fulltests/${qs}`);
 }
 
+// POST /api/fulltests/create_fulltest/
+export async function createFulltestEntry({ name, tag = '', description = '' }) {
+  return apiFetch('/api/fulltests/create_fulltest/', {
+    method: 'POST',
+    body: JSON.stringify({ name, tag, description }),
+  });
+}
+
 // POST /api/fulltests/{id}/add_improvement/
 export async function postAddImprovement(id, improvement) {
   return apiFetch(`/api/fulltests/${id}/add_improvement/`, {
@@ -104,6 +112,12 @@ export async function stopFulltest(id) {
 // GET /api/fulltests/{id}/logs/
 export async function getFulltestLogs(id) {
   return apiFetch(`/api/fulltests/${id}/logs/`);
+}
+
+// GET /api/fulltests/get_kube_logs/?exp_name=...&lines=...
+export async function getKubeLogs(expName, lines = 500) {
+  const qs = buildQueryString({ exp_name: expName, lines });
+  return apiFetch(`/api/fulltests/get_kube_logs/${qs}`);
 }
 
 // DELETE /api/fulltests/{id}/
