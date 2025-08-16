@@ -464,12 +464,18 @@ const ExperimentList = () => {
   };
 
   const handleTagToggle = (tag) => {
-    setEditForm(prev => ({
-      ...prev,
-      tags: prev.tags.includes(tag)
+    setEditForm(prev => {
+      const newTags = prev.tags.includes(tag)
         ? prev.tags.filter(t => t !== tag)
-        : [...prev.tags, tag]
-    }));
+        : [...prev.tags.filter(t => t !== 'No tag'), tag];
+      
+      // If no tags left, restore 'No tag'
+      if (newTags.length === 0) {
+        return { ...prev, tags: ['No tag'] };
+      }
+      
+      return { ...prev, tags: newTags };
+    });
   };
 
   const handleImprovementToggle = (improvement) => {
@@ -483,10 +489,10 @@ const ExperimentList = () => {
 
   const addNewTag = (newTag) => {
     if (newTag.trim() && !editForm.tags.includes(newTag.trim())) {
-      setEditForm(prev => ({
-        ...prev,
-        tags: [...prev.tags, newTag.trim()]
-      }));
+      setEditForm(prev => {
+        const newTags = [...prev.tags.filter(t => t !== 'No tag'), newTag.trim()];
+        return { ...prev, tags: newTags };
+      });
     }
   };
 
@@ -497,7 +503,11 @@ const ExperimentList = () => {
       const entityId = editingExperiment.pk ?? editingExperiment.id;
       const VALID_STATUS = ['created', 'running', 'completed', 'failed', 'stopped'];
 
-      const patchBody = { description: editForm.description, is_valid: !!editForm.is_valid };
+      const patchBody = { 
+        description: editForm.description, 
+        is_valid: !!editForm.is_valid,
+        tag: editForm.tags.join(',') // Changed from 'tags' to 'tag' to match backend model
+      };
       if (VALID_STATUS.includes(editForm.status)) {
         patchBody.status = editForm.status;
       }
@@ -523,6 +533,7 @@ const ExperimentList = () => {
         }
         updated.is_valid = !!editForm.is_valid;
         updated.improvements = after;
+        updated.tags = editForm.tags; // Add tags to the local state update
         return normalizeExperiment(updated);
       }));
     } catch (e) {

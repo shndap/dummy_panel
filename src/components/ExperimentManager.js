@@ -9,7 +9,9 @@ import {
   Title,
   Tooltip,
   Legend,
+  TimeScale,
 } from 'chart.js';
+import 'chartjs-adapter-date-fns';
 import { getImprovedExperiments } from '../api/fulltests';
 import { migrateData } from '../api/dashboard';
 
@@ -20,7 +22,8 @@ ChartJS.register(
   PointElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  TimeScale
 );
 
 function parseMaybeJSON(value, fallback) {
@@ -120,6 +123,7 @@ const ExperimentManager = () => {
   const [maxGoalsByType, setMaxGoalsByType] = useState({});
   const [GoalsByType, setGoalsByType] = useState({});
   const [isMigrating, setIsMigrating] = useState(false);
+  const [plotType, setPlotType] = useState('overall');
 
   useEffect(() => {
     return () => {
@@ -144,11 +148,18 @@ const ExperimentManager = () => {
         .filter(exp => ensureArray(exp.improvements).length > 0)
         .filter(exp => exp.isValid)
         .flatMap(exp =>
-          ensureArray(exp.goals).map(goal => ({
-            ...goal,
-            expName: exp.code,
-            expDate: exp.created_at || exp.date || null
-          }))
+          ensureArray(exp.goals)
+            .filter(goal => {
+              // Check if the goal_type is present in exp.improvements (case-insensitive)
+              const improvements = ensureArray(exp.improvements).map(i => String(i).toLowerCase());
+              const goalType = String(goal.goal_type || '').toLowerCase();
+              return improvements.includes(goalType);
+            })
+            .map(goal => ({
+              ...goal,
+              expName: exp.code,
+              expDate: exp.created_at || exp.date || null
+            }))
         )
         .reduce((acc, goal) => {
           const type = goal.goal_type || 'unknown';
@@ -181,6 +192,7 @@ const ExperimentManager = () => {
       });
       setMaxGoalsByType(maxGoalsByType);
       setGoalsByType(goalsByType);
+      console.log(goalsByType);
     } catch (e) {
       setError(e.data || e.message || 'Failed to load experiments');
     } finally {
@@ -211,82 +223,47 @@ const ExperimentManager = () => {
 
   // Build chart data from goals by type
   const chartData = useMemo(() => {
-    // Collect unique timestamps (ms) from all types
-    const toTs = (d) => {
+    const toDate = (d) => {
       if (!d) return null;
-      const t = new Date(d).getTime();
-      return isNaN(t) ? null : t;
+      const dt = new Date(d);
+      return isNaN(dt.getTime()) ? null : dt;
     };
-    const tsSet = new Set();
-    ['open', 'close', 'reg'].forEach(type => {
-      const arr = GoalsByType[type] || [];
-      arr.forEach(({ date }) => {
-        const ts = toTs(date);
-        if (ts != null) tsSet.add(ts);
-      });
+
+    const types = (
+      plotType === 'overall' ? ['open', 'close', 'reg'] :
+      plotType === 'classification' ? ['open', 'close'] :
+      plotType === 'open' ? ['open'] :
+      plotType === 'close' ? ['close'] :
+      ['reg']
+    );
+
+    const colorFor = (type) => (
+      type === 'open' ? { border: 'rgba(75,192,192,1)', bg: 'rgba(75,192,192,0.2)' } :
+      type === 'close' ? { border: 'rgba(255,99,132,1)', bg: 'rgba(255,99,132,0.2)' } :
+      { border: 'rgba(54,162,235,1)', bg: 'rgba(54,162,235,0.2)' }
+    );
+
+    const datasets = types.map((type) => {
+      const raw = (GoalsByType[type] || [])
+        .map(({ date, value }) => ({ x: toDate(date), y: Number(value) }))
+        .filter(p => p.x && isFinite(p.y));
+      // Sort by date
+      raw.sort((a, b) => a.x - b.x);
+      const { border, bg } = colorFor(type);
+      return {
+        label: type.charAt(0).toUpperCase() + type.slice(1),
+        data: raw,
+        parsing: true, // x/y points
+        borderColor: border,
+        backgroundColor: bg,
+        fill: true,
+        tension: 0.3,
+        spanGaps: true,
+      };
     });
-    let labelsTs = Array.from(tsSet).sort((a, b) => a - b);
-    // Limit to most recent 50 points for readability
-    if (labelsTs.length > 50) labelsTs = labelsTs.slice(-50);
 
-    const formatLabel = (ts) => {
-      const d = new Date(ts);
-      const pad = n => n.toString().padStart(2, '0');
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    };
-    const labels = labelsTs.map(formatLabel);
-
-    const buildSeries = (type) => {
-      const map = {};
-      (GoalsByType[type] || []).forEach(({ date, value }) => {
-        const ts = toTs(date);
-        if (ts != null) map[ts] = Number(value);
-      });
-      return labelsTs.map(ts => (ts in map ? map[ts] : null));
-    };
-
-    const buildNameSeries = (type) => {
-      const map = {};
-      (GoalsByType[type] || []).forEach(({ date, expName }) => {
-        const ts = toTs(date);
-        if (ts != null) map[ts] = expName;
-      });
-      return labelsTs.map(ts => (ts in map ? map[ts] : ''));
-    };
-
-    return {
-      labels,
-      datasets: [
-        {
-          label: 'Open',
-          data: buildSeries('open'),
-          borderColor: 'rgba(75,192,192,1)',
-          backgroundColor: 'rgba(75,192,192,0.2)',
-          fill: true,
-          tension: 0.4,
-          pointExpNames: buildNameSeries('open'),
-        },
-        {
-          label: 'Close',
-          data: buildSeries('close'),
-          borderColor: 'rgba(255,99,132,1)',
-          backgroundColor: 'rgba(255,99,132,0.2)',
-          fill: true,
-          tension: 0.4,
-          pointExpNames: buildNameSeries('close'),
-        },
-        {
-          label: 'Reg',
-          data: buildSeries('reg'),
-          borderColor: 'rgba(54,162,235,1)',
-          backgroundColor: 'rgba(54,162,235,0.2)',
-          fill: true,
-          tension: 0.4,
-          pointExpNames: buildNameSeries('reg'),
-        },
-      ],
-    };
-  }, [GoalsByType]);
+    return { datasets };
+  }, [GoalsByType, plotType]);
 
   const options = {
     responsive: true,
@@ -302,7 +279,6 @@ const ExperimentManager = () => {
             if (y != null) parts.push(`${ctx.dataset.label}: ${y}`);
             const name = (ctx.dataset.pointExpNames || [])[ctx.dataIndex];
             if (name) parts.push(`Exp: ${name}`);
-            // Use array for multi-line, not join('\n'), for Chart.js v3+ compatibility
             return parts;
           }
         }
@@ -310,7 +286,25 @@ const ExperimentManager = () => {
     },
     scales: {
       y: { beginAtZero: false, grid: { color: 'rgba(0,0,0,0.05)' } },
-      x: { grid: { color: 'rgba(0,0,0,0.05)' } },
+      x: {
+        type: 'time',
+        time: {
+          unit: 'day',
+          tooltipFormat: 'yyyy-MM-dd HH:mm',
+          displayFormats: {
+            minute: 'HH:mm',
+            hour: 'MM-dd HH',
+            day: 'yyyy-MM-dd',
+            month: 'yyyy-MM',
+          }
+        },
+        grid: { color: 'rgba(0,0,0,0.05)' },
+        ticks: {
+          source: 'auto',
+          autoSkip: true,
+          maxTicksLimit: 8,
+        }
+      },
     }
   };
 
@@ -411,50 +405,56 @@ const ExperimentManager = () => {
           }}>
             {experiments
               .filter(exp => ensureArray(exp.improvements).length > 0)
-              .map(exp => (
-                <div 
-                  key={exp.id}
-                  style={{
-                    padding: '10px',
-                    marginBottom: '10px',
-                    borderLeft: '4px solid',
-                    borderLeftColor: 
-                      ensureArray(exp.improvements).includes('Open') ? 'rgb(75,192,192)' :
-                      ensureArray(exp.improvements).includes('Close') ? 'rgb(255,99,132)' :
-                      'rgb(54,162,235)',
-                    backgroundColor: '#f8f9fa',
-                    borderRadius: '0 4px 4px 0'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ fontWeight: 'bold', color: '#2D3748' }}>{exp.code}</div>
-                    <button
-                      onClick={() => { const u = getPlotsUrl(exp.code); if (u) window.open(u, '_blank', 'noopener'); }}
-                      title="Open plots"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M14 3h7v7" stroke="#3182CE" strokeWidth="2" strokeLinecap="round"/>
-                        <path d="M10 14L21 3" stroke="#3182CE" strokeWidth="2" strokeLinecap="round"/>
-                        <path d="M21 14v6a1 1 0 0 1-1 1h-14a1 1 0 0 1-1-1v-14a1 1 0 0 1 1-1h6" stroke="#3182CE" strokeWidth="2"/>
-                      </svg>
-                    </button>
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#4A5568' }}>{exp.description}</div>
-                  <div style={{ marginTop: '6px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    {ensureArray(exp.improvements).map((imp, idx) => (
-                      <span key={idx} style={{
-                        padding: '2px 8px',
-                        borderRadius: '10px',
-                        fontSize: '11px',
-                        backgroundColor: imp === 'Open' ? '#F0FFF4' : imp === 'Close' ? '#FFF5F5' : '#EBF8FF',
-                        color: imp === 'Open' ? '#38A169' : imp === 'Close' ? '#E53E3E' : '#3182CE',
-                        border: '1px solid #E2E8F0'
-                      }}>{imp}</span>
-                    ))}
-                  </div>
-                </div>
-              ))}
+              .map(exp => {
+                    const improvements = ensureArray(exp.improvements);
+                    const colors = [];
+                    if (improvements.includes('Open')) colors.push('rgb(75,192,192)');
+                    if (improvements.includes('Close')) colors.push('rgb(255,99,132)');
+                    if (improvements.includes('Reg')) colors.push('rgb(54,162,235)');
+                    const colorStops = colors.map((color, index) => `${color} ${(index / colors.length) * 100}%, ${color} ${((index + 1) / colors.length) * 100}%`).join(', ');
+
+                    return (
+                      <div 
+                        key={exp.id}
+                        style={{
+                          padding: '10px',
+                          marginBottom: '10px',
+                          borderLeft: '4px solid',
+                          borderImage: `linear-gradient(to bottom, ${colorStops}) 1 100%`,
+                          backgroundColor: '#f8f9fa',
+                          borderRadius: '0 4px 4px 0'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ fontWeight: 'bold', color: '#2D3748' }}>{exp.code}</div>
+                          <button
+                            onClick={() => { const u = getPlotsUrl(exp.code); if (u) window.open(u, '_blank', 'noopener'); }}
+                            title="Open plots"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                          >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M14 3h7v7" stroke="#3182CE" strokeWidth="2" strokeLinecap="round"/>
+                              <path d="M10 14L21 3" stroke="#3182CE" strokeWidth="2" strokeLinecap="round"/>
+                              <path d="M21 14v6a1 1 0 0 1-1 1h-14a1 1 0 0 1-1-1v-14a1 1 0 0 1 1-1h6" stroke="#3182CE" strokeWidth="2"/>
+                            </svg>
+                          </button>
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#4A5568' }}>{exp.description}</div>
+                        <div style={{ marginTop: '6px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          {ensureArray(exp.improvements).map((imp, idx) => (
+                            <span key={idx} style={{
+                              padding: '2px 8px',
+                              borderRadius: '10px',
+                              fontSize: '11px',
+                              backgroundColor: imp === 'Open' ? '#F0FFF4' : imp === 'Close' ? '#FFF5F5' : '#EBF8FF',
+                              color: imp === 'Open' ? '#38A169' : imp === 'Close' ? '#E53E3E' : '#3182CE',
+                              border: '1px solid #E2E8F0'
+                            }}>{imp}</span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
           </div>
         </div>
 
@@ -464,10 +464,22 @@ const ExperimentManager = () => {
           padding: '20px',
           borderRadius: '8px',
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          height: '400px'
         }}>
           <Line ref={chartRef} data={chartData} options={options} />
         </div>
+
+      <div style={{ marginBottom: '20px', textAlign: 'right', display: 'flex', alignItems: 'center', height: '40px' }}>
+        <div style={{ marginLeft: 'auto' }}>Select plot type</div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+        <button onClick={() => setPlotType('overall')} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E0', background: plotType === 'overall' ? '#3182CE' : 'white', color: plotType === 'overall' ? 'white' : '#2D3748', cursor: 'pointer' }}>Overall</button>
+        <button onClick={() => setPlotType('classification')} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E0', background: plotType === 'classification' ? '#3182CE' : 'white', color: plotType === 'classification' ? 'white' : '#2D3748', cursor: 'pointer' }}>Classification</button>
+        <button onClick={() => setPlotType('open')} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E0', background: plotType === 'open' ? '#3182CE' : 'white', color: plotType === 'open' ? 'white' : '#2D3748', cursor: 'pointer' }}>Open</button>
+        <button onClick={() => setPlotType('close')} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E0', background: plotType === 'close' ? '#3182CE' : 'white', color: plotType === 'close' ? 'white' : '#2D3748', cursor: 'pointer' }}>Close</button>
+        <button onClick={() => setPlotType('reg')} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E0', background: plotType === 'reg' ? '#3182CE' : 'white', color: plotType === 'reg' ? 'white' : '#2D3748', cursor: 'pointer' }}>Reg</button>
+      </div>
+
       </div>
     </div>
   );

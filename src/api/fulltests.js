@@ -63,6 +63,7 @@ export async function addImprovement(id, improvement, expName) {
     try {
       return await getExperimentValue(expName, goalType);
     } catch (e) {
+      console.error(e);
       return null;
     }
   }
