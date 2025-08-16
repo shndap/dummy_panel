@@ -100,8 +100,8 @@ export async function patchFulltest(id, body) {
 }
 
 // POST /api/fulltests/{id}/start/
-export async function startFulltest(id) {
-  return apiFetch(`/api/fulltests/${id}/start/`, { method: 'POST' });
+export async function startFulltest(id, highPriority = false) {
+  return apiFetch(`/api/fulltests/${id}/start/`, { method: 'POST', body: JSON.stringify({ high_priority: highPriority }) });
 }
 
 // POST /api/fulltests/{id}/stop/
