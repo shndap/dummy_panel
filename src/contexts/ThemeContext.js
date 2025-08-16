@@ -1,14 +1,8 @@
-import React, { createContext, useContext, useState } from 'react';
-
-const defaultTheme = {
-  primary: '',
-  secondary: '',
-  background: '',
-  text: '',
-};
+import React, { createContext, useContext, useState, useMemo } from 'react';
+import { lightTheme, darkTheme, defaultTheme } from '../theme';
 
 export const ThemeContext = createContext({
-  colors: defaultTheme,
+  theme: { ...lightTheme, tokens: defaultTheme.colors },
   isDarkMode: false,
   toggleTheme: () => {},
 });
@@ -23,14 +17,19 @@ export const useTheme = () => {
 
 export const ThemeProvider = ({ children }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [colors, setColors] = useState(defaultTheme);
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
   };
 
+  const theme = useMemo(() => {
+    const base = isDarkMode ? darkTheme : lightTheme;
+    // Always expose extended tokens from defaultTheme under theme.tokens
+    return { ...base, tokens: defaultTheme.colors };
+  }, [isDarkMode]);
+
   const value = {
-    colors,
+    theme,
     isDarkMode,
     toggleTheme,
   };

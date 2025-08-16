@@ -1,17 +1,46 @@
 export const lightTheme = {
   colors: {
-    primary: '#4CAF50',
-    secondary: '#2196F3',
-    success: '#38A169',
-    danger: '#E53E3E',
-    warning: '#ECC94B',
-    info: '#3182CE',
-    
+    primary: {
+      main: '#4CAF50',
+      light: '#68D391',
+      dark: '#2F855A',
+    },
+    secondary: {
+      main: '#2196F3',
+      light: '#63B3ED',
+      dark: '#2B6CB0',
+    },
+    success: {
+      main: '#38A169',
+      light: '#48BB78',
+      dark: '#27ae60',
+    },
+    error: {
+      main: '#E53E3E',
+      light: '#F56565',
+      dark: '#e74c3c',
+    },
+    warning: {
+      main: '#ECC94B',
+      light: '#F6E05E',
+      dark: '#D69E2E',
+    },
+    info: {
+      main: '#3182CE',
+      light: '#4299E1',
+      dark: '#2563EB',
+    },
+    danger: {
+      main: '#E53E3E',
+    },
     // Background colors
     background: {
       main: '#F8FAFC',
       paper: '#FFFFFF',
       sidebar: '#FFFFFF',
+      default: '#FFFFFF',
+      dark: '#1e1e1e',
+      alt: '#282c34',
     },
     
     // Text colors
@@ -31,6 +60,48 @@ export const lightTheme = {
       inactive: '#FFF5F5',
       inactiveText: '#E53E3E',
     },
+
+    // Grayscale
+    grey: {
+      100: '#F8FAFC',
+      200: '#F7FAFC',
+      300: '#EDF2F7',
+      400: '#E2E8F0',
+      500: '#CBD5E0',
+      600: '#A0AEC0',
+      700: '#718096',
+      800: '#4A5568',
+      900: '#2D3748',
+      1000: '#1A202C',
+    },
+
+    // UI specific colors
+    ui: {
+      border: '#E2E8F0',
+      divider: '#EDF2F7',
+      hover: '#F1F5F9',
+      focus: '#61dafb',
+      selection: '#c6f6d5',
+      highlight: '#fbd38d',
+      error: '#feb2b2',
+      warning: '#FED7D7',
+    },
+
+    // Chart colors
+    chart: {
+      open: {
+        border: 'rgb(75,192,192)',
+        bg: 'rgba(75,192,192,0.2)',
+      },
+      close: {
+        border: 'rgb(255,99,132)',
+        bg: 'rgba(255,99,132,0.2)',
+      },
+      reg: {
+        border: 'rgb(54,162,235)',
+        bg: 'rgba(54,162,235,0.2)',
+      },
+    },
   },
   
   shadows: {
@@ -42,17 +113,46 @@ export const lightTheme = {
 
 export const darkTheme = {
   colors: {
-    primary: '#68D391',
-    secondary: '#63B3ED',
-    success: '#48BB78',
-    danger: '#F56565',
-    warning: '#F6E05E',
-    info: '#4299E1',
-    
+    primary: {
+      main: '#68D391',
+      light: '#9AE6B4',
+      dark: '#48BB78',
+    },
+    secondary: {
+      main: '#63B3ED',
+      light: '#90CDF4',
+      dark: '#4299E1',
+    },
+    success: {
+      main: '#48BB78',
+      light: '#68D391',
+      dark: '#38A169',
+    },
+    error: {
+      main: '#F56565',
+      light: '#FC8181',
+      dark: '#E53E3E',
+    },
+    warning: {
+      main: '#F6E05E',
+      light: '#FAF089',
+      dark: '#ECC94B',
+    },
+    info: {
+      main: '#4299E1',
+      light: '#63B3ED',
+      dark: '#3182CE',
+    },
+    danger: {
+      main: '#F56565',
+    },
     background: {
       main: '#1A202C',
       paper: '#2D3748',
       sidebar: '#2D3748',
+      default: '#1A202C',
+      dark: '#171923',
+      alt: '#2D3748',
     },
     
     text: {
@@ -68,6 +168,48 @@ export const darkTheme = {
       activeText: '#68D391',
       inactive: '#3B3747',
       inactiveText: '#F56565',
+    },
+
+    // Grayscale
+    grey: {
+      100: '#F8FAFC',
+      200: '#F7FAFC',
+      300: '#EDF2F7',
+      400: '#E2E8F0',
+      500: '#CBD5E0',
+      600: '#A0AEC0',
+      700: '#718096',
+      800: '#4A5568',
+      900: '#2D3748',
+      1000: '#1A202C',
+    },
+
+    // UI specific colors
+    ui: {
+      border: '#4A5568',
+      divider: '#2D3748',
+      hover: '#2D3748',
+      focus: '#63B3ED',
+      selection: '#2F855A',
+      highlight: '#D69E2E',
+      error: '#FC8181',
+      warning: '#3B3747',
+    },
+
+    // Chart colors - using slightly brighter colors for dark theme
+    chart: {
+      open: {
+        border: 'rgb(85,202,202)',
+        bg: 'rgba(85,202,202,0.2)',
+      },
+      close: {
+        border: 'rgb(255,109,142)',
+        bg: 'rgba(255,109,142,0.2)',
+      },
+      reg: {
+        border: 'rgb(64,172,245)',
+        bg: 'rgba(64,172,245,0.2)',
+      },
     },
   },
   
@@ -113,7 +255,9 @@ export const defaultTheme = {
       light: '#4299E1',
       dark: '#2563EB',
     },
-    
+    danger: {
+      main: '#E53E3E',
+    },
     // Grayscale
     grey: {
       100: '#F8FAFC',
@@ -175,6 +319,22 @@ export const defaultTheme = {
       highlight: '#fbd38d',
       error: '#feb2b2',
       warning: '#FED7D7',
+    },
+
+    // Chart colors
+    chart: {
+      open: {
+        border: 'rgb(75,192,192)',
+        bg: 'rgba(75,192,192,0.2)',
+      },
+      close: {
+        border: 'rgb(255,99,132)',
+        bg: 'rgba(255,99,132,0.2)',
+      },
+      reg: {
+        border: 'rgb(54,162,235)',
+        bg: 'rgba(54,162,235,0.2)',
+      },
     },
   },
   

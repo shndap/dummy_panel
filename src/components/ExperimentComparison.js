@@ -50,56 +50,49 @@ const ImprovementBadges = ({ improvements }) => (
   </div>
 );
 
-const MetricTable = ({ label, m1 = {}, m2 = {} }) => {
-  const rows = [
-    { key: 'mse', name: 'MSE', higherIsBetter: false, format: (v) => (v == null ? '-' : Number(v).toFixed(4)) },
-    { key: 'buyHighlow', name: 'Buy High/Low', higherIsBetter: true, format: (v) => (v == null ? '-' : `${(Number(v) * 100).toFixed(1)}%`) },
-    { key: 'sellHighlow', name: 'Sell High/Low', higherIsBetter: true, format: (v) => (v == null ? '-' : `${(Number(v) * 100).toFixed(1)}%`) },
-  ];
+const Box = ({ children, label }) => {
+  const { theme } = useTheme();
+  return (
+    <div style={{ border: `1px solid ${theme.colors.border}`, borderRadius: '8px', overflow: 'hidden' }}>
+      <div style={{ background: theme.tokens.grey[200], padding: '8px 12px', fontWeight: 600, color: theme.tokens.grey[800] }}>{label}</div>
+      {children}
+    </div>
+  );
+};
 
-  const compare = (v1, v2, higherIsBetter) => {
-    if (v1 == null || v2 == null || isNaN(Number(v1)) || isNaN(Number(v2))) return { better: 0, change: null };
-    const n1 = Number(v1);
-    const n2 = Number(v2);
-    if (n1 === n2) return { better: 0, change: 0 };
-    const better = higherIsBetter ? (n1 > n2 ? 1 : -1) : (n1 < n2 ? 1 : -1);
-    const base = n2;
-    const change = base !== 0 ? ((n1 - n2) / Math.abs(base)) * 100 : null;
-    return { better, change };
+// Named simple comparison table (not default export)
+export const MetricComparisonTable = ({ label, diff, emphasis }) => {
+  const { theme } = useTheme();
+  const headerBg = theme.tokens.grey[200];
+  const headerColor = theme.tokens.grey[800];
+  const neutral = theme.colors.text.secondary;
+
+  const renderRow = (name, v1, v2, better) => {
+    const color = better === 0 ? neutral : better > 0 ? theme.colors.success.main : theme.colors.danger.main;
+    return (
+      <tr>
+        <td style={{ padding: '8px', borderBottom: `1px solid ${theme.tokens.ui.divider}`, color: theme.colors.text.primary }}>{name}</td>
+        <td style={{ padding: '8px', borderBottom: `1px solid ${theme.tokens.ui.divider}`, color: theme.colors.text.primary, textAlign: 'right' }}>{v1}</td>
+        <td style={{ padding: '8px', borderBottom: `1px solid ${theme.tokens.ui.divider}`, color: theme.colors.text.primary, textAlign: 'right' }}>{v2}</td>
+        <td style={{ padding: '8px', borderBottom: `1px solid ${theme.tokens.ui.divider}`, color }}>{better}</td>
+      </tr>
+    );
   };
 
   return (
-    <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', overflow: 'hidden' }}>
-      <div style={{ background: '#F7FAFC', padding: '8px 12px', fontWeight: 600, color: '#4A5568' }}>{label}</div>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+    <div style={{ border: `1px solid ${theme.colors.border}`, borderRadius: '8px', overflow: 'hidden' }}>
+      <div style={{ background: headerBg, padding: '8px 12px', fontWeight: 600, color: headerColor }}>{label}</div>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr>
-            <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #E2E8F0', color: '#4A5568' }}>Metric</th>
-            <th style={{ textAlign: 'right', padding: '8px', borderBottom: '1px solid #E2E8F0', color: '#4A5568' }}>Exp 1</th>
-            <th style={{ textAlign: 'right', padding: '8px', borderBottom: '1px solid #E2E8F0', color: '#4A5568' }}>Exp 2</th>
-            <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #E2E8F0', color: '#4A5568' }}>Δ</th>
+            <th style={{ textAlign: 'left', padding: '8px', borderBottom: `1px solid ${theme.colors.border}`, color: theme.tokens.grey[800] }}>Metric</th>
+            <th style={{ textAlign: 'right', padding: '8px', borderBottom: `1px solid ${theme.colors.border}`, color: theme.tokens.grey[800] }}>Exp 1</th>
+            <th style={{ textAlign: 'right', padding: '8px', borderBottom: `1px solid ${theme.colors.border}`, color: theme.tokens.grey[800] }}>Exp 2</th>
+            <th style={{ textAlign: 'left', padding: '8px', borderBottom: `1px solid ${theme.colors.border}`, color: theme.tokens.grey[800] }}>Δ</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map(({ key, name, higherIsBetter, format }) => {
-            const v1 = m1[key];
-            const v2 = m2[key];
-            const { better, change } = compare(v1, v2, higherIsBetter);
-            const arrow = better === 0 ? '–' : better > 0 ? '↑' : '↓';
-            const color = better === 0 ? '#718096' : better > 0 ? '#38A169' : '#E53E3E';
-            return (
-              <tr key={key}>
-                <td style={{ padding: '8px', borderBottom: '1px solid #EDF2F7', color: '#2D3748' }}>{name}</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #EDF2F7', color: '#2D3748', textAlign: 'right' }}>{format(v1)}</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #EDF2F7', color: '#2D3748', textAlign: 'right' }}>{format(v2)}</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #EDF2F7', color }}>
-                  {change == null ? arrow : (
-                    <span>{arrow} {Math.abs(change).toFixed(2)}%</span>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
+          {Array.isArray(diff) && diff.map((d, idx) => renderRow(d.name, d.v1, d.v2, d.better))}
         </tbody>
       </table>
     </div>
@@ -107,6 +100,7 @@ const MetricTable = ({ label, m1 = {}, m2 = {} }) => {
 };
 
 const ExperimentComparison = () => {
+  const { theme } = useTheme();
   const [selectedExp1, setSelectedExp1] = useState('');
   const [selectedExp2, setSelectedExp2] = useState('');
   const [options, setOptions] = useState([]); // array of { code, id, pk }
@@ -193,13 +187,13 @@ const ExperimentComparison = () => {
   const renderValueCell = (v, emphasis) => {
     const baseStyle = {
       padding: '8px',
-      borderBottom: '1px solid #EDF2F7',
-      color: emphasis === 'added' ? '#38A169' : emphasis === 'removed' ? '#E53E3E' : '#2D3748',
+      borderBottom: `1px solid ${theme.tokens.ui.divider}`,
+      color: emphasis === 'added' ? theme.colors.success.main : emphasis === 'removed' ? theme.colors.danger.main : theme.colors.text.primary,
       fontFamily: 'inherit',
       verticalAlign: 'top',
     };
     if (v === undefined) {
-      return <td style={baseStyle}><span style={{ color: '#A0AEC0', fontStyle: 'italic' }}>missing</span></td>;
+      return <td style={baseStyle}><span style={{ color: theme.colors.text.disabled, fontStyle: 'italic' }}>missing</span></td>;
     }
     if (isPlainObject(v) || isArray(v)) {
       const summary = typeLabel(v);
@@ -207,7 +201,7 @@ const ExperimentComparison = () => {
         <td style={baseStyle}>
           <details>
             <summary style={{ cursor: 'pointer' }}>{summary}</summary>
-            <pre style={{ margin: '6px 0 0', background: '#F7FAFC', padding: '8px', border: '1px solid #E2E8F0', borderRadius: '4px' }}>
+            <pre style={{ margin: '6px 0 0', background: theme.tokens.grey[200], padding: '8px', border: `1px solid ${theme.colors.border}`, borderRadius: '4px' }}>
               {JSON.stringify(v, null, 2)}
             </pre>
           </details>
@@ -249,23 +243,23 @@ const ExperimentComparison = () => {
   }, [files]);
 
   const DiffTable = ({ title, diff }) => (
-    <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', overflow: 'hidden' }}>
-      <div style={{ background: '#F7FAFC', padding: '8px 12px', fontWeight: 600, color: '#4A5568' }}>{title} ({diff.length})</div>
+    <div style={{ border: `1px solid ${theme.colors.border}`, borderRadius: '8px', overflow: 'hidden' }}>
+      <div style={{ background: theme.tokens.grey[200], padding: '8px 12px', fontWeight: 600, color: theme.tokens.grey[800] }}>{title} ({diff.length})</div>
       {diff.length === 0 ? (
-        <div style={{ padding: '12px', color: '#718096' }}>No differences</div>
+        <div style={{ padding: '12px', color: theme.colors.text.secondary }}>No differences</div>
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
           <thead>
             <tr>
-              <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #E2E8F0' }}>Path</th>
-              <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #E2E8F0' }}>Exp 1</th>
-              <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #E2E8F0' }}>Exp 2</th>
+              <th style={{ textAlign: 'left', padding: '8px', borderBottom: `1px solid ${theme.colors.border}` }}>Path</th>
+              <th style={{ textAlign: 'left', padding: '8px', borderBottom: `1px solid ${theme.colors.border}` }}>Exp 1</th>
+              <th style={{ textAlign: 'left', padding: '8px', borderBottom: `1px solid ${theme.colors.border}` }}>Exp 2</th>
             </tr>
           </thead>
           <tbody>
             {diff.slice(0, MAX_DIFF_ITEMS).map((d, idx) => (
               <tr key={idx}>
-                <td style={{ padding: '8px', borderBottom: '1px solid #EDF2F7', color: '#2D3748', whiteSpace: 'nowrap' }}>{d.path}</td>
+                <td style={{ padding: '8px', borderBottom: `1px solid ${theme.tokens.ui.divider}`, color: theme.colors.text.primary, whiteSpace: 'nowrap' }}>{d.path}</td>
                 {renderValueCell(d.a, d.type === 'removed' ? 'removed' : undefined)}
                 {renderValueCell(d.b, d.type === 'added' ? 'added' : undefined)}
               </tr>
@@ -274,7 +268,7 @@ const ExperimentComparison = () => {
         </table>
       )}
       </div>
-    );
+  );
 
   return (
     <PageContainer>
@@ -302,16 +296,16 @@ const ExperimentComparison = () => {
         </div>
 
         {loading && <div>Loading...</div>}
-        {error && <div style={{ color: '#E53E3E' }}>{String(error)}</div>}
+        {error && <div style={{ color: theme.colors.danger.main }}>{String(error)}</div>}
 
         {exp1 || exp2 ? (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <div>
-              <h3 style={{ margin: '0 0 8px', color: '#2D3748' }}>{exp1?.code || 'Experiment 1'}</h3>
+              <h3 style={{ margin: '0 0 8px', color: theme.colors.text.primary }}>{exp1?.code || 'Experiment 1'}</h3>
               <ImprovementBadges improvements={Array.isArray(exp1?.improvements) ? exp1.improvements : []} />
             </div>
             <div>
-              <h3 style={{ margin: '0 0 8px', color: '#2D3748' }}>{exp2?.code || 'Experiment 2'}</h3>
+              <h3 style={{ margin: '0 0 8px', color: theme.colors.text.primary }}>{exp2?.code || 'Experiment 2'}</h3>
               <ImprovementBadges improvements={Array.isArray(exp2?.improvements) ? exp2.improvements : []} />
             </div>
           </div>
@@ -327,7 +321,7 @@ const ExperimentComparison = () => {
             )}
           </div>
         ) : (
-          <div style={{ padding: '24px', color: '#718096' }}>
+          <div style={{ padding: '24px', color: theme.colors.text.secondary }}>
             Select two experiments to compare their metrics.
           </div>
         )}

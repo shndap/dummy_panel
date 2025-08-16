@@ -6,9 +6,11 @@ import ExperimentList from './components/ExperimentList';
 import ExperimentComparison from './components/ExperimentComparison';
 import FulltestDashboard from './components/FulltestDashboard';
 import TestSuiteDashboard from './components/TestSuiteDashboard';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 
 const NavLink = ({ to, children }) => {
   const location = useLocation();
+  const { theme } = useTheme();
   const isActive = location.pathname === to || 
     (to === '/improvements' && location.pathname === '/');
   
@@ -18,14 +20,14 @@ const NavLink = ({ to, children }) => {
       style={{ 
         padding: '12px 16px',
         textDecoration: 'none',
-        color: isActive ? '#2D3748' : '#718096',
+        color: isActive ? theme.colors.text.primary : theme.colors.text.secondary,
         fontWeight: isActive ? '600' : '500',
         fontSize: '14px',
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
         borderRadius: '6px',
-        backgroundColor: isActive ? '#EDF2F7' : 'transparent',
+        backgroundColor: isActive ? theme.tokens.grey[300] : 'transparent',
         transition: 'all 0.2s ease',
         marginBottom: '4px',
       }}
@@ -37,155 +39,158 @@ const NavLink = ({ to, children }) => {
 
 function App() {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const { theme } = useTheme();
 
   const toggleSidebar = () => {
     setSidebarOpen(prev => !prev);
   };
 
   return (
-    <Router>
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        minHeight: '100vh',
-        backgroundColor: '#F8FAFC',
-      }}>
-        {/* Header */}
-        <header style={{
-          background: 'white',
-          borderBottom: '1px solid #E2E8F0',
-          padding: '16px 24px',
-          position: 'sticky',
-          top: 0,
-          zIndex: 1000,
-        }}>
-          <div style={{
-            // maxWidth: '1400px',
-            margin: '0 auto',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-          }}>
-            <button
-              onClick={toggleSidebar}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '8px',
-                borderRadius: '4px',
-                color: '#2D3748',
-              }}
-            >
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  fontSize: '24px',
-                  transition: 'color 0.2s',
-                  color: isSidebarOpen ? '#2D3748' : '#4CAF50',
-                }}
-                aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-                title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-              >
-                {/* Hamburger icon */}
-                <svg
-                  width="28"
-                  height="28"
-                  viewBox="0 0 28 28"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  style={{
-                    display: 'block',
-                  }}
-                >
-                  <rect y="6" width="28" height="3" rx="1.5" fill="currentColor"/>
-                  <rect y="13" width="28" height="3" rx="1.5" fill="currentColor"/>
-                  <rect y="20" width="28" height="3" rx="1.5" fill="currentColor"/>
-                </svg>
-              </span>
-            </button>
-            <h1 style={{
-              margin: 0,
-              fontSize: '24px',
-              fontWeight: '600',
-              color: '#2D3748',
-            }}>
-              <span style={{
-                background: 'linear-gradient(135deg, #4CAF50, #2196F3)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                fontWeight: '700',
-              }}>
-                PNL Dashboard
-              </span>
-            </h1>
-          </div>
-        </header>
-
+    <ThemeProvider>
+      <Router>
         <div style={{ 
-          display: 'flex',
-          flex: 1,
+          display: 'flex', 
+          flexDirection: 'column', 
+          minHeight: '100vh',
+          backgroundColor: theme.colors.background.main,
         }}>
-          {/* Sidebar */}
-          <aside style={{
-            width: isSidebarOpen ? '240px' : '0',
-            background: 'white',
-            borderRight: '1px solid #E2E8F0',
-            padding: isSidebarOpen ? '24px 16px' : '24px 0',
+          {/* Header */}
+          <header style={{
+            background: theme.colors.background.paper,
+            borderBottom: `1px solid ${theme.colors.border}`,
+            padding: '16px 24px',
             position: 'sticky',
-            top: '69px',
-            height: 'calc(100vh - 69px)',
-            overflowY: 'auto',
-            transition: 'all 0.3s ease',
-            overflow: 'hidden',
+            top: 0,
+            zIndex: 1000,
           }}>
-            <nav style={{ 
-              display: 'flex', 
-              flexDirection: 'column',
-              opacity: isSidebarOpen ? 1 : 0,
-              transition: 'opacity 0.3s ease',
+            <div style={{
+              // maxWidth: '1400px',
+              margin: '0 auto',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
             }}>
-              <NavLink to="/improvements">
-                <span style={{ fontSize: '18px' }}>📈</span> Improvement Types
-              </NavLink>
-              <NavLink to="/info">
-                <span style={{ fontSize: '18px' }}>ℹ️</span> Experiment Info
-              </NavLink>
-              <NavLink to="/experiments">
-                <span style={{ fontSize: '18px' }}>🧪</span> All Experiments
-              </NavLink>
-              <NavLink to="/comparison">
-                <span style={{ fontSize: '18px' }}>⚖️</span> Comparison
-              </NavLink>
-              <NavLink to="/fulltest">
-                <span style={{ fontSize: '18px' }}>🔬</span> Fulltest
-              </NavLink>
-              <NavLink to="/testsuite">
-                <span style={{ fontSize: '18px' }}>🧩</span> Test Suite
-              </NavLink>
-            </nav>
-          </aside>
+              <button
+                onClick={toggleSidebar}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '8px',
+                  borderRadius: '4px',
+                  color: theme.colors.text.primary,
+                }}
+              >
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    fontSize: '24px',
+                    transition: 'color 0.2s',
+                    color: isSidebarOpen ? theme.colors.text.primary : theme.colors.primary,
+                  }}
+                  aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+                  title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+                >
+                  {/* Hamburger icon */}
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 28 28"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    style={{
+                      display: 'block',
+                    }}
+                  >
+                    <rect y="6" width="28" height="3" rx="1.5" fill="currentColor"/>
+                    <rect y="13" width="28" height="3" rx="1.5" fill="currentColor"/>
+                    <rect y="20" width="28" height="3" rx="1.5" fill="currentColor"/>
+                  </svg>
+                </span>
+              </button>
+              <h1 style={{
+                margin: 0,
+                fontSize: '24px',
+                fontWeight: '600',
+                color: theme.colors.text.primary,
+              }}>
+                <span style={{
+                  background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`,
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  fontWeight: '700',
+                }}>
+                  PNL Dashboard
+                </span>
+              </h1>
+            </div>
+          </header>
 
-          {/* Main Content */}
-          <main style={{ 
-            flex: 1, 
-            padding: '24px',
-            transition: 'all 0.3s ease',
+          <div style={{ 
+            display: 'flex',
+            flex: 1,
           }}>
-            <Routes>
-              <Route path="/improvements" element={<ExperimentManager />} />
-              <Route path="/info" element={<ExperimentInfo />} />
-              <Route path="/experiments" element={<ExperimentList />} />
-              <Route path="/comparison" element={<ExperimentComparison />} />
-              <Route path="/fulltest" element={<FulltestDashboard />} />
-              <Route path="/testsuite" element={<TestSuiteDashboard />} />
-              <Route path="/" element={<ExperimentManager />} />
-            </Routes>
-          </main>
+            {/* Sidebar */}
+            <aside style={{
+              width: isSidebarOpen ? '240px' : '0',
+              background: theme.colors.background.paper,
+              borderRight: `1px solid ${theme.colors.border}`,
+              padding: isSidebarOpen ? '24px 16px' : '24px 0',
+              position: 'sticky',
+              top: '69px',
+              height: 'calc(100vh - 69px)',
+              overflowY: 'auto',
+              transition: 'all 0.3s ease',
+              overflow: 'hidden',
+            }}>
+              <nav style={{ 
+                display: 'flex', 
+                flexDirection: 'column',
+                opacity: isSidebarOpen ? 1 : 0,
+                transition: 'opacity 0.3s ease',
+              }}>
+                <NavLink to="/improvements">
+                  <span style={{ fontSize: '18px' }}>📈</span> Improvement Types
+                </NavLink>
+                <NavLink to="/info">
+                  <span style={{ fontSize: '18px' }}>ℹ️</span> Experiment Info
+                </NavLink>
+                <NavLink to="/experiments">
+                  <span style={{ fontSize: '18px' }}>🧪</span> All Experiments
+                </NavLink>
+                <NavLink to="/comparison">
+                  <span style={{ fontSize: '18px' }}>⚖️</span> Comparison
+                </NavLink>
+                <NavLink to="/fulltest">
+                  <span style={{ fontSize: '18px' }}>🔬</span> Fulltest
+                </NavLink>
+                <NavLink to="/testsuite">
+                  <span style={{ fontSize: '18px' }}>🧩</span> Test Suite
+                </NavLink>
+              </nav>
+            </aside>
+
+            {/* Main Content */}
+            <main style={{ 
+              flex: 1, 
+              padding: '24px',
+              transition: 'all 0.3s ease',
+            }}>
+              <Routes>
+                <Route path="/improvements" element={<ExperimentManager />} />
+                <Route path="/info" element={<ExperimentInfo />} />
+                <Route path="/experiments" element={<ExperimentList />} />
+                <Route path="/comparison" element={<ExperimentComparison />} />
+                <Route path="/fulltest" element={<FulltestDashboard />} />
+                <Route path="/testsuite" element={<TestSuiteDashboard />} />
+                <Route path="/" element={<ExperimentManager />} />
+              </Routes>
+            </main>
+          </div>
         </div>
-      </div>
-    </Router>
+      </Router>
+    </ThemeProvider>
   );
 }
 

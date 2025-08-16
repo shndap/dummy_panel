@@ -9,6 +9,7 @@ const ExperimentInfo = () => {
   const [experimentData, setExperimentData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { theme } = useTheme();
 
   const resolveId = async (input) => {
     if (/^\d+$/.test(input)) return input; // numeric id
@@ -29,10 +30,8 @@ const ExperimentInfo = () => {
         apiFetch(`/api/fulltests/${id}/git_info/`),
       ]);
 
-      // Prepare git diff content
       const gitDiffText = gitDiff.status === 'success' ? gitDiff.content : 'Failed to load git diff';
 
-      // Prepare git info content (parse JSON if possible)
       const gitInfoContent = gitInfo.status === 'success' ? gitInfo.content : null;
       let gitInfoObject = null;
       let gitInfoRaw = '';
@@ -90,8 +89,8 @@ const ExperimentInfo = () => {
       <div style={{
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
         fontSize: '12px',
-        background: '#1e1e1e',
-        color: '#e2e8f0',
+        background: theme.tokens.background.dark,
+        color: theme.tokens.grey[300],
         padding: '12px',
         borderRadius: '8px',
         overflowX: 'auto',
@@ -102,19 +101,19 @@ const ExperimentInfo = () => {
             whiteSpace: 'pre',
           };
           if (isHeader(line)) {
-            style.background = '#2d3748';
-            style.color = '#63b3ed';
+            style.background = theme.tokens.grey[900];
+            style.color = theme.tokens.accent.blue.main;
           } else if (isHunk(line)) {
-            style.background = '#2a4365';
-            style.color = '#fbd38d';
+            style.background = theme.tokens.accent.purple.dark;
+            style.color = theme.tokens.ui.highlight;
           } else if (isAdd(line)) {
-            style.background = '#1f3d2b';
-            style.color = '#9ae6b4';
+            style.background = theme.tokens.accent.green.dark;
+            style.color = theme.tokens.accent.green.main;
           } else if (isDel(line)) {
-            style.background = '#4a2020';
-            style.color = '#feb2b2';
+            style.background = theme.tokens.accent.red.dark;
+            style.color = theme.tokens.ui.error;
           } else {
-            style.color = '#e2e8f0';
+            style.color = theme.tokens.grey[300];
           }
           return (
             <div key={idx} style={style}>
@@ -144,18 +143,18 @@ const ExperimentInfo = () => {
         </form>
 
         {error && (
-          <div style={{ color: '#E53E3E', marginTop: '12px' }}>{String(error)}</div>
+          <div style={{ color: theme.colors.danger.main, marginTop: '12px' }}>{String(error)}</div>
         )}
 
         {experimentData && (
           <div style={{ marginTop: '24px' }}>
             <div style={{ marginBottom: '24px' }}>
-              <h4 style={{ color: '#2d3748', marginBottom: '12px' }}>Git Diff</h4>
+              <h4 style={{ color: theme.colors.text.primary, marginBottom: '12px' }}>Git Diff</h4>
               {renderGitDiffPretty(experimentData.gitDiff)}
             </div>
 
             <div style={{ marginBottom: '24px' }}>
-              <h4 style={{ color: '#2d3748', marginBottom: '12px' }}>Git Info</h4>
+              <h4 style={{ color: theme.colors.text.primary, marginBottom: '12px' }}>Git Info</h4>
               {(() => {
                 const { gitInfoObject, gitInfoRaw } = experimentData;
                 if (gitInfoObject && typeof gitInfoObject === 'object') {
@@ -165,15 +164,15 @@ const ExperimentInfo = () => {
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                         <thead>
                           <tr>
-                            <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #E2E8F0', color: '#4A5568' }}>Key</th>
-                            <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #E2E8F0', color: '#4A5568' }}>Value</th>
+                            <th style={{ textAlign: 'left', padding: '8px', borderBottom: `1px solid ${theme.colors.border}`, color: theme.colors.text.secondary }}>Key</th>
+                            <th style={{ textAlign: 'left', padding: '8px', borderBottom: `1px solid ${theme.colors.border}`, color: theme.colors.text.secondary }}>Value</th>
                           </tr>
                         </thead>
                         <tbody>
                           {entries.map(([key, value]) => (
                             <tr key={key}>
-                              <td style={{ padding: '8px', borderBottom: '1px solid #EDF2F7', color: '#2D3748', whiteSpace: 'nowrap' }}>{key}</td>
-                              <td style={{ padding: '8px', borderBottom: '1px solid #EDF2F7', color: '#2D3748' }}>
+                              <td style={{ padding: '8px', borderBottom: `1px solid ${theme.colors.border}`, color: theme.colors.text.primary, whiteSpace: 'nowrap' }}>{key}</td>
+                              <td style={{ padding: '8px', borderBottom: `1px solid ${theme.colors.border}`, color: theme.colors.text.primary }}>
                                 {typeof value === 'object' ? (
                                   <pre style={{ margin: 0 }}>{JSON.stringify(value, null, 2)}</pre>
                                 ) : (
@@ -189,10 +188,10 @@ const ExperimentInfo = () => {
                 }
                 return (
                   <pre style={{ 
-                    background: '#f7fafc',
+                    background: theme.colors.background.main,
                     padding: '16px',
                     borderRadius: '8px',
-                    border: '1px solid #e2e8f0',
+                    border: `1px solid ${theme.colors.border}`,
                     fontSize: '13px',
                     lineHeight: 1.5,
                   }}>
@@ -203,9 +202,9 @@ const ExperimentInfo = () => {
             </div>
 
             <div>
-              <h4 style={{ color: '#2d3748', marginBottom: '12px' }}>Other Info</h4>
+              <h4 style={{ color: theme.colors.text.primary, marginBottom: '12px' }}>Other Info</h4>
               <p style={{ 
-                color: '#4a5568',
+                color: theme.colors.text.secondary,
                 lineHeight: 1.6,
                 fontSize: '14px',
               }}>

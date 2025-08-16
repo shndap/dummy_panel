@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { PageContainer, PageHeader, Card, Input, Select, Button } from './shared/UIComponents';
 import { getFrontendExperiments, patchFulltest, addImprovement, removeImprovement } from '../api/fulltests';
 import { useTheme } from '../contexts/ThemeContext';
+import { hexToRgba } from '../utils/color';
+import { getThemeColor, getChartColors, ThemeColors } from '../utils/theme';
 
 function parseMaybeJSON(value, fallback) {
   if (value == null) return fallback;
@@ -87,21 +89,6 @@ function buildFinancialHeader(paths) {
   return { headerRows: rows, leafOrder, headerDepth };
 }
 
-function formatNumberCell(value) {
-  if (value == null || (typeof value === 'number' && Number.isNaN(value))) {
-    return { text: '', style: {} };
-  }
-  if (typeof value === 'number') {
-    const text = Number(value).toFixed(5);
-    const style = {
-      color: value > 0 ? '#38A169' : value < 0 ? '#E53E3E' : '#2D3748',
-      fontWeight: value !== 0 ? 600 : undefined,
-    };
-    return { text, style };
-  }
-  return { text: String(value), style: {} };
-}
-
 function getPlotsUrl(code) {
   if (!code) return null;
   return `https://trader-results.roshan-ai.ir/fulltest_cache/${encodeURIComponent(code)}_FullTest/plots.html`;
@@ -123,6 +110,23 @@ function normalizeExperiment(exp) {
 }
 
 const ExperimentList = () => {
+  const { theme } = useTheme();
+  
+  const formatNumberCell = (value) => {
+    if (value == null || (typeof value === 'number' && Number.isNaN(value))) {
+      return { text: '', style: {} };
+    }
+    if (typeof value === 'number') {
+      const text = Number(value).toFixed(5);
+      const style = {
+        color: value > 0 ? theme.colors.success.main : value < 0 ? theme.colors.danger.main : theme.colors.text.primary,
+        fontWeight: value !== 0 ? 600 : undefined,
+      };
+      return { text, style };
+    }
+    return { text: String(value), style: {} };
+  };
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -239,8 +243,8 @@ const ExperimentList = () => {
         borderRadius: '12px',
         fontSize: '11px',
         fontWeight: '500',
-        backgroundColor: selected ? '#3182CE' : '#EDF2F7',
-        color: selected ? 'white' : '#4A5568',
+        backgroundColor: selected ? theme.colors.info.main : theme.tokens.grey[300],
+        color: selected ? 'white' : theme.tokens.grey[800],
         cursor: onClick ? 'pointer' : 'default',
         display: 'inline-block',
         margin: '2px',
@@ -250,10 +254,7 @@ const ExperimentList = () => {
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         border: '1px solid',
-        borderColor: selected ? '#3182CE' : '#E2E8F0',
-        '&:hover': {
-          backgroundColor: selected ? '#2C5282' : '#E2E8F0',
-        }
+        borderColor: selected ? theme.colors.info.main : theme.colors.border,
       }}
       title={tag}
     >
@@ -262,6 +263,8 @@ const ExperimentList = () => {
   );
 
   const ImprovementBadges = ({ improvements, status }) => {
+    const chartColors = getChartColors(theme);
+    
     if (status === 'invalid') {
       return (
         <span style={{
@@ -269,8 +272,8 @@ const ExperimentList = () => {
           borderRadius: '12px',
           fontSize: '12px',
           fontWeight: '500',
-          backgroundColor: '#FED7D7',
-          color: '#E53E3E',
+          backgroundColor: theme.tokens.ui.warning,
+          color: getThemeColor(theme, ThemeColors.ERROR),
         }}>
           Invalid
         </span>
@@ -286,8 +289,8 @@ const ExperimentList = () => {
           borderRadius: '12px',
           fontSize: '12px',
           fontWeight: '500',
-          backgroundColor: '#EDF2F7',
-          color: '#718096',
+          backgroundColor: theme.tokens.grey[300],
+          color: theme.colors.text.secondary,
         }}>
           No Improvement
         </span>
@@ -305,13 +308,13 @@ const ExperimentList = () => {
               fontSize: '12px',
               fontWeight: '500',
               backgroundColor: 
-                imp === 'Open' ? '#F0FFF4' :
-                imp === 'Close' ? '#FFF5F5' :
-                '#EBF8FF',
+                imp === 'Open' ? chartColors.open.bg :
+                imp === 'Close' ? chartColors.close.bg :
+                chartColors.reg.bg,
               color:
-                imp === 'Open' ? '#38A169' :
-                imp === 'Close' ? '#E53E3E' :
-                '#3182CE',
+                imp === 'Open' ? chartColors.open.border :
+                imp === 'Close' ? chartColors.close.border :
+                chartColors.reg.border,
             }}
           >
             {imp}
@@ -543,6 +546,8 @@ const ExperimentList = () => {
       closeEditModal();
     }
   };
+
+  const overlayBg = hexToRgba(theme.tokens.grey[1000] || '#1A202C', 0.5);
 
   return (
     <PageContainer>
@@ -1265,7 +1270,7 @@ const ExperimentList = () => {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: overlayBg,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
