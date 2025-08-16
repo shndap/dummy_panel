@@ -741,8 +741,40 @@ const FulltestDashboard = () => {
         </h2>
         <button
           onClick={() => setIsCreateOpen(true)}
-          style={{ padding: '8px 12px', border: '1px solid #CBD5E0', borderRadius: '6px', background: 'white', cursor: 'pointer' }}
+          style={{
+            padding: '10px 20px',
+            border: 'none',
+            borderRadius: '8px',
+            background: 'linear-gradient(90deg, #3182CE 0%, #63B3ED 100%)',
+            color: 'white',
+            fontWeight: 600,
+            fontSize: '16px',
+            boxShadow: '0 2px 8px 0 rgba(49,130,206,0.10)',
+            cursor: 'pointer',
+            transition: 'background 0.2s, box-shadow 0.2s',
+            outline: 'none',
+            letterSpacing: '0.5px'
+          }}
+          onMouseOver={e => {
+            e.currentTarget.style.background = 'linear-gradient(90deg, #2563EB 0%, #4299E1 100%)';
+            e.currentTarget.style.boxShadow = '0 4px 16px 0 rgba(49,130,206,0.18)';
+          }}
+          onMouseOut={e => {
+            e.currentTarget.style.background = 'linear-gradient(90deg, #3182CE 0%, #63B3ED 100%)';
+            e.currentTarget.style.boxShadow = '0 2px 8px 0 rgba(49,130,206,0.10)';
+          }}
         >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            style={{ verticalAlign: 'middle', marginRight: '8px', marginBottom: '2px' }}
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle cx="10" cy="10" r="10" fill="#fff" fillOpacity="0.50"/>
+            <path d="M10 5v10M5 10h10" stroke="#3182CE" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
           New Fulltest
         </button>
       </div>
