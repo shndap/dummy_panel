@@ -8,6 +8,7 @@ import {
   stopFulltest,
   getKubeLogs,
   createFulltestEntry,
+  getJobStatus,
 } from "../api/fulltests";
 
 const colorsByStatus = {
@@ -58,6 +59,33 @@ const PlayIcon = ({ size = 20 }) => (
     xmlns="http://www.w3.org/2000/svg"
   >
     <path d="M8 5v14l11-7L8 5z" fill="#2B6CB0" />
+  </svg>
+);
+
+const PlayHighPriorityIcon = ({ size = 20 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    {/* Red play triangle for urgency */}
+    <path d="M8 5v14l11-7L8 5z" fill="#2B6CB0" />
+    {/* Exclamation mark badge in top-left */}
+    <circle cx="6" cy="6" r="5" fill="#E53E3E" />
+    <text
+      x="6"
+      y="9"
+      textAnchor="middle"
+      fontSize="8"
+      fontWeight="bold"
+      fill="#fff"
+      fontFamily="Arial, sans-serif"
+      style={{ pointerEvents: "none", userSelect: "none" }}
+    >
+      !
+    </text>
   </svg>
 );
 
@@ -230,11 +258,33 @@ const StatusCircle = ({ status, progress = 0 }) => {
     );
   }
 
-  // created/stopped/others: empty circle
+  // created: show a dashed circle with a plus sign
+  if (s === "created") {
+    return (
+      <svg width="28" height="28" viewBox="0 0 28 28">
+        <circle
+          cx="14"
+          cy="14"
+          r="12"
+          fill="none"
+          stroke="#A0AEC0"
+          strokeWidth="2.5"
+          strokeDasharray="4 3"
+        />
+        {/* Plus sign */}
+        <rect x="13" y="8" width="2" height="12" rx="1" fill="#A0AEC0" />
+        <rect x="8" y="13" width="12" height="2" rx="1" fill="#A0AEC0" />
+      </svg>
+    );
+  }
+  // stopped/others: empty circle with pause sign
   const fill = s === "stopped" ? colorsByStatus.stopped : "#CBD5E0";
   return (
     <svg width="28" height="28" viewBox="0 0 28 28">
       <circle cx="14" cy="14" r="12" fill={fill} />
+      {/* Pause sign: two vertical bars */}
+      <rect x="9" y="8" width="3" height="12" rx="1" fill="#fff" />
+      <rect x="16" y="8" width="3" height="12" rx="1" fill="#fff" />
     </svg>
   );
 };
@@ -246,6 +296,7 @@ const FulltestDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [progressById, setProgressById] = useState({});
+  const [jobStatus, setJobStatus] = useState(null);
 
   // New state: filters and pagination
   const [searchTerm, setSearchTerm] = useState("");
@@ -308,6 +359,17 @@ const FulltestDashboard = () => {
 
   useEffect(() => {
     refreshList(1, "");
+  }, []);
+
+  useEffect(() => {
+    // Fetch job status when the component mounts
+    getJobStatus()
+      .then(response => {
+        setJobStatus(response);
+      })
+      .catch(error => {
+        console.error('Error fetching job status:', error);
+      });
   }, []);
 
   // Poll progress for running jobs by parsing "%" from logs
@@ -562,10 +624,103 @@ const FulltestDashboard = () => {
         padding: "24px",
         maxWidth: "1400px",
         margin: "0 auto",
-        backgroundColor: "#f8fafc",
+        background: "linear-gradient(120deg, #f8fafc 60%, #e2e8f0 100%)",
         minHeight: "100vh",
       }}
     >
+      {jobStatus && (
+        <section
+          style={{
+            background: "white",
+            padding: "24px 32px",
+            borderRadius: "16px",
+            boxShadow: "0 4px 24px 0 rgba(44,62,80,0.08)",
+            marginBottom: "32px",
+            display: "flex",
+            alignItems: "center",
+            gap: "32px",
+            border: "1px solid #e2e8f0",
+          }}
+        >
+          <div style={{ flex: "0 0 auto" }}>
+            <h3 style={{
+              margin: 0,
+              color: "#2d3748",
+              fontSize: "22px",
+              fontWeight: 700,
+              letterSpacing: "0.01em"
+            }}>
+              <span style={{
+                display: "inline-block",
+                verticalAlign: "middle",
+                marginRight: "10px",
+                color: "#3182ce"
+              }}>⏱️</span>
+              Job Status
+            </h3>
+            <div style={{
+              fontSize: "13px",
+              color: "#718096",
+              marginTop: "2px"
+            }}>
+              Cluster queue overview
+            </div>
+          </div>
+          <div style={{
+            display: "flex",
+            gap: "32px",
+            flex: 1,
+            justifyContent: "flex-end"
+          }}>
+            <div style={{
+              background: "#ebf8ff",
+              color: "rgba(49,130,206,1)",
+              borderRadius: "8px",
+              padding: "12px 20px",
+              minWidth: "120px",
+              textAlign: "center",
+              fontWeight: 600,
+              fontSize: "16px",
+              boxShadow: "0 1px 4px 0 rgba(49,130,206,0.04)",
+              border: "1px solid rgba(49,130,206,0.5)"
+            }}>
+              <div style={{ fontSize: "13px", color: "rgba(49,130,206,1)", fontWeight: 500, marginBottom: "2px" }}>High Priority</div>
+              {jobStatus.high_priority_jobs}
+            </div>
+            <div style={{
+              background: "#fefcbf",
+              color: "rgba(237, 137, 54, 1)",
+              borderRadius: "8px",
+              padding: "12px 20px",
+              minWidth: "120px",
+              textAlign: "center",
+              fontWeight: 600,
+              fontSize: "16px",
+              boxShadow: "0 1px 4px 0 rgba(237,137,54,0.04)",
+              border: "1px solid rgba(237,137,54,0.5)"
+            }}>
+              <div style={{ fontSize: "13px", color: "rgba(237, 137, 54, 1)", fontWeight: 500, marginBottom: "2px" }}>Normal Priority</div>
+              {jobStatus.normal_priority_jobs}
+            </div>
+            <div style={{
+              background: "#c6f6d5",
+              color: "rgba(72,187,120, 1)",
+              borderRadius: "8px",
+              padding: "12px 20px",
+              minWidth: "120px",
+              textAlign: "center",
+              fontWeight: 600,
+              fontSize: "16px",
+              boxShadow: "0 1px 4px 0 rgba(72,187,120,0.04)",
+              border: "1px solid rgba(72,187,120,0.5)"
+            }}>
+              <div style={{ fontSize: "13px", color: "rgba(72,187,120, 1)", fontWeight: 500, marginBottom: "2px" }}>Running Total</div>
+              {jobStatus.total_running_jobs}
+            </div>
+          </div>
+        </section>
+      )}
+
       <div
         style={{
           display: "flex",
@@ -787,11 +942,20 @@ const FulltestDashboard = () => {
                             alignItems: "center",
                             justifyContent: "center",
                             gap: "8px",
+                            position: "relative",
                           }}
+                          title={
+                            test.status
+                              ? String(test.status).charAt(0).toUpperCase() + String(test.status).slice(1) +
+                                (String(test.status).toLowerCase() === "running" && typeof test.progress === "number"
+                                  ? ` (${Math.round(test.progress)}%)`
+                                  : "")
+                              : ""
+                          }
                         >
                           <StatusCircle
                             status={test.status}
-                            progress={progressById[test.id]}
+                            progress={test.progress}
                           />
                         </div>
                       </td>
@@ -814,6 +978,12 @@ const FulltestDashboard = () => {
                             title="Start"
                           >
                             <PlayIcon />
+                          </IconButton>
+                          <IconButton
+                            onClick={() => handleStart(test.id)}
+                            title="Start High Priority"
+                          >
+                            <PlayHighPriorityIcon />
                           </IconButton>
                           <IconButton
                               onClick={() => handlePause(test.id)}

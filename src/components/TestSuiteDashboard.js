@@ -59,6 +59,7 @@ const TestSuiteDashboard = () => {
   const openTests = async (suite) => {
     try {
       const data = await listTestSuiteTests({ suite_path: suite.path, page: 1, limit: 20 });
+      console.log(data);
       setTestsModal({ open: true, suite, items: data?.data || [], page: data?.pagination?.currentPage || 1, limit: data?.pagination?.itemsPerPage || 20, pagination: data?.pagination || {} });
     } catch (e) {
       setTestsModal({ open: true, suite, items: [], page: 1, limit: 20, pagination: {}, error: e?.message || 'Failed to load tests' });
@@ -172,7 +173,17 @@ const TestSuiteDashboard = () => {
                       <td style={{ padding: 8, borderBottom: '1px solid #EDF2F7', textAlign: 'center' }}>{t.completed_runs}/{t.started_runs}/{t.total_runs}</td>
                       <td style={{ padding: 8, borderBottom: '1px solid #EDF2F7', textAlign: 'center' }}>
                         {t.plot_available ? (
-                          <button onClick={() => { getTestSuitePlot({ path: t.plot_path }).then((res) => setPlotModal({ open: true, html: res?.content || '' })); }} style={{ padding: '6px 10px', border: '1px solid #3182CE', borderRadius: 6, background: '#3182CE', color: 'white' }}>View Plot</button>
+                          <button
+                            onClick={() => {
+                              if (t.plot_path) {
+                                const plotUrl = t.plot_path.replace('/mnt/storage/trader', 'https://trader-results.roshan-ai.ir');
+                                window.open(plotUrl, '_blank', 'noopener,noreferrer');
+                              }
+                            }}
+                            style={{ padding: '6px 10px', border: '1px solid #3182CE', borderRadius: 6, background: '#3182CE', color: 'white' }}
+                          >
+                            View Plot
+                          </button>
                         ) : (
                           <span style={{ color: '#A0AEC0' }}>Not ready</span>
                         )}

@@ -141,3 +141,7 @@ export async function listTestSuiteTests(params = {}) {
   const qs = buildQueryString(params);
   return apiFetch(`/api/dashboard/test_suite_tests/${qs}`);
 } 
+
+export async function getJobStatus() {
+  return apiFetch('/api/dashboard/job_status/');
+}
