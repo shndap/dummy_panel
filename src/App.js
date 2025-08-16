@@ -5,6 +5,7 @@ import ExperimentInfo from './components/ExperimentInfo';
 import ExperimentList from './components/ExperimentList';
 import ExperimentComparison from './components/ExperimentComparison';
 import FulltestDashboard from './components/FulltestDashboard';
+import TestSuiteDashboard from './components/TestSuiteDashboard';
 
 const NavLink = ({ to, children }) => {
   const location = useLocation();
@@ -134,6 +135,9 @@ function App() {
               <NavLink to="/fulltest">
                 <span style={{ fontSize: '18px' }}>🔬</span> Fulltest
               </NavLink>
+              <NavLink to="/testsuite">
+                <span style={{ fontSize: '18px' }}>🧩</span> Test Suite
+              </NavLink>
             </nav>
           </aside>
 
@@ -149,6 +153,7 @@ function App() {
               <Route path="/experiments" element={<ExperimentList />} />
               <Route path="/comparison" element={<ExperimentComparison />} />
               <Route path="/fulltest" element={<FulltestDashboard />} />
+              <Route path="/testsuite" element={<TestSuiteDashboard />} />
               <Route path="/" element={<ExperimentManager />} />
             </Routes>
           </main>

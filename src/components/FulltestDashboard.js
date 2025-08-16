@@ -746,16 +746,16 @@ const FulltestDashboard = () => {
                     const nm = test.name || test.code;
                     const meta = nameToMeta[nm] || { tags: [], improvements: [] };
                     return (
-                      <tr key={test.id} style={{ transition: "all 0.2s ease" }}>
-                        <td style={{ ...tdStyle }}>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "10px",
-                            }}
-                          >
-                            <div style={{ fontWeight: "500" }}>
+                    <tr key={test.id} style={{ transition: "all 0.2s ease" }}>
+                      <td style={{ ...tdStyle }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                          }}
+                        >
+                          <div style={{ fontWeight: "500" }}>
                               {nm || `#${test.id}`}
                             </div>
                           </div>
@@ -771,51 +771,51 @@ const FulltestDashboard = () => {
                             {meta.tags.length > 3 && (
                               <span style={{ fontSize: '11px', color: '#718096' }}>+{meta.tags.length - 3}</span>
                             )}
-                          </div>
-                        </td>
-                        <td style={{ ...tdStyle, textAlign: "center" }}>
+                        </div>
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "center" }}>
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', flexWrap: 'wrap' }}>
                             {meta.improvements.map((imp, idx) => (
                               <span key={idx} style={{ padding: '2px 6px', borderRadius: '10px', fontSize: '11px', border: '1px solid #E2E8F0', backgroundColor: imp === 'Open' ? '#F0FFF4' : imp === 'Close' ? '#FFF5F5' : '#EBF8FF', color: imp === 'Open' ? '#38A169' : imp === 'Close' ? '#E53E3E' : '#3182CE' }}>{imp}</span>
                             ))}
                           </div>
-                        </td>
-                        <td style={{ ...tdStyle, textAlign: "center" }}>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: "8px",
-                            }}
-                          >
-                            <StatusCircle
-                              status={test.status}
-                              progress={progressById[test.id]}
-                            />
-                          </div>
-                        </td>
-                        <td style={{ ...tdStyle, textAlign: "center" }}>
-                          <div
-                            style={{
-                              display: "flex",
-                              gap: "8px",
-                              justifyContent: "center",
-                            }}
-                          >
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "center" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <StatusCircle
+                            status={test.status}
+                            progress={progressById[test.id]}
+                          />
+                        </div>
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "center" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "8px",
+                            justifyContent: "center",
+                          }}
+                        >
                             <IconButton
                               onClick={() => window.open(getPlotsUrl(nm), "_blank")}
                               title="View results"
                             >
                               <ExternalLinkIcon />
                             </IconButton>
-                            <IconButton
-                              onClick={() => handleStart(test.id)}
-                              title="Start"
-                            >
-                              <PlayIcon />
-                            </IconButton>
-                            <IconButton
+                          <IconButton
+                            onClick={() => handleStart(test.id)}
+                            title="Start"
+                          >
+                            <PlayIcon />
+                          </IconButton>
+                          <IconButton
                               onClick={() => handlePause(test.id)}
                               title="Pause"
                             >
@@ -830,19 +830,19 @@ const FulltestDashboard = () => {
                             <IconButton
                               onClick={() => openLogs(test.id)}
                               title="View Logs"
-                            >
-                              <ScrollIcon />
-                            </IconButton>
-                            <IconButton
-                              onClick={() => handleDelete(test.id)}
-                              title="Delete"
-                            variant="danger" 
                           >
-                              <TrashIcon />
-                            </IconButton>
-                          </div>
-                        </td>
-                      </tr>
+                            <ScrollIcon />
+                          </IconButton>
+                          <IconButton
+                            onClick={() => handleDelete(test.id)}
+                            title="Delete"
+                          variant="danger" 
+                        >
+                            <TrashIcon />
+                          </IconButton>
+                        </div>
+                      </td>
+                    </tr>
                     );
                   })}
                 </tbody>
@@ -893,8 +893,8 @@ const FulltestDashboard = () => {
                 maxHeight: "500px",
                 overflowY: "auto",
                 fontSize: "13px",
-                margin: 0,
-                lineHeight: 1.5,
+              margin: 0,
+              lineHeight: 1.5,
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
               }}

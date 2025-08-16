@@ -272,8 +272,8 @@ const ExperimentComparison = () => {
           </tbody>
         </table>
       )}
-    </div>
-  );
+      </div>
+    );
 
   return (
     <PageContainer>
@@ -284,19 +284,19 @@ const ExperimentComparison = () => {
             <label>Experiment 1</label>
             <Select value={selectedExp1} onChange={(e) => { setSelectedExp1(e.target.value); loadByCode(e.target.value, setExp1); }}>
               <option value="">Select...</option>
-              {options.map(opt => (
+            {options.map(opt => (
                 <option key={opt.code} value={opt.code}>{opt.code}</option>
-              ))}
-            </Select>
+            ))}
+          </Select>
           </div>
           <div style={{ flex: 1 }}>
             <label>Experiment 2</label>
             <Select value={selectedExp2} onChange={(e) => { setSelectedExp2(e.target.value); loadByCode(e.target.value, setExp2); }}>
               <option value="">Select...</option>
-              {options.map(opt => (
+            {options.map(opt => (
                 <option key={opt.code} value={opt.code}>{opt.code}</option>
-              ))}
-            </Select>
+            ))}
+          </Select>
           </div>
         </div>
 

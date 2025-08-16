@@ -123,4 +123,21 @@ export async function getKubeLogs(expName, lines = 500) {
 // DELETE /api/fulltests/{id}/
 export async function deleteFulltest(id) {
   return apiFetch(`/api/fulltests/${id}/`, { method: 'DELETE' });
+}
+
+// Test suites
+export async function listTestSuites(params = {}) {
+  const qs = buildQueryString(params);
+  return apiFetch(`/api/dashboard/test_suites/${qs}`);
+}
+
+export async function getTestSuitePlot(params) {
+  // params can include { path } or { asset, suite }
+  const qs = buildQueryString(params || {});
+  return apiFetch(`/api/dashboard/test_suite_plot/${qs}`);
+}
+
+export async function listTestSuiteTests(params = {}) {
+  const qs = buildQueryString(params);
+  return apiFetch(`/api/dashboard/test_suite_tests/${qs}`);
 } 
