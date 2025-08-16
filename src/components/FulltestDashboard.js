@@ -413,9 +413,9 @@ const FulltestDashboard = () => {
   //   return () => clearInterval(interval);
   // }, [fulltests]);
 
-  const handleStart = async (id) => {
+  const handleStart = async (id, highPriority = false) => {
     try {
-      const response = await startFulltest(id);
+      const response = await startFulltest(id, highPriority);
       console.log(response);
       await refreshList(page, searchTerm);
     } catch (e) {
@@ -980,7 +980,7 @@ const FulltestDashboard = () => {
                             <PlayIcon />
                           </IconButton>
                           <IconButton
-                            onClick={() => handleStart(test.id)}
+                            onClick={() => handleStart(test.id, true)}
                             title="Start High Priority"
                           >
                             <PlayHighPriorityIcon />
