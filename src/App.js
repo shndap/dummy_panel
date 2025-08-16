@@ -60,7 +60,7 @@ function App() {
           zIndex: 1000,
         }}>
           <div style={{
-            maxWidth: '1400px',
+            // maxWidth: '1400px',
             margin: '0 auto',
             display: 'flex',
             alignItems: 'center',
@@ -77,7 +77,33 @@ function App() {
                 color: '#2D3748',
               }}
             >
-              {isSidebarOpen ? '◀' : '▶'}
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  fontSize: '24px',
+                  transition: 'color 0.2s',
+                  color: isSidebarOpen ? '#2D3748' : '#4CAF50',
+                }}
+                aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+                title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+              >
+                {/* Hamburger icon */}
+                <svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 28 28"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  style={{
+                    display: 'block',
+                  }}
+                >
+                  <rect y="6" width="28" height="3" rx="1.5" fill="currentColor"/>
+                  <rect y="13" width="28" height="3" rx="1.5" fill="currentColor"/>
+                  <rect y="20" width="28" height="3" rx="1.5" fill="currentColor"/>
+                </svg>
+              </span>
             </button>
             <h1 style={{
               margin: 0,

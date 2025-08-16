@@ -10,6 +10,7 @@ import {
   createFulltestEntry,
   getJobStatus,
 } from "../api/fulltests";
+import { useTheme } from '../contexts/ThemeContext';
 
 const colorsByStatus = {
   created: "#CBD5E0",

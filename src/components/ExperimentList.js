@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PageContainer, PageHeader, Card, Input, Select, Button } from './shared/UIComponents';
 import { getFrontendExperiments, patchFulltest, addImprovement, removeImprovement } from '../api/fulltests';
+import { useTheme } from '../contexts/ThemeContext';
 
 function parseMaybeJSON(value, fallback) {
   if (value == null) return fallback;

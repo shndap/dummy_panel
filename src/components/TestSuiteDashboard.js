@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { listTestSuites, getTestSuitePlot, listTestSuiteTests } from '../api/fulltests';
+import { useTheme } from '../contexts/ThemeContext';
 
 const ProgressBar = ({ value }) => {
   const pct = Math.max(0, Math.min(100, Math.round((value || 0) * 100)));

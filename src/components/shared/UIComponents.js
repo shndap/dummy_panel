@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export const Button = ({ onClick, disabled, variant = 'primary', children, style = {}, type = 'button' }) => {
   const baseStyle = {

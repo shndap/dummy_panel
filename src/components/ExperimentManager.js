@@ -14,6 +14,7 @@ import {
 import 'chartjs-adapter-date-fns';
 import { getImprovedExperiments } from '../api/fulltests';
 import { migrateData } from '../api/dashboard';
+import { useTheme } from '../contexts/ThemeContext';
 
 ChartJS.register(
   CategoryScale,

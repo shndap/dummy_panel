@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PageContainer, PageHeader, Card, Button, Input } from './shared/UIComponents';
 import { apiFetch } from '../api/client';
 import { getFrontendExperiments } from '../api/fulltests';
+import { useTheme } from '../contexts/ThemeContext';
 
 const ExperimentInfo = () => {
   const [experimentCode, setExperimentCode] = useState('');
