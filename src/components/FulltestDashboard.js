@@ -12,16 +12,17 @@ import {
 } from "../api/fulltests";
 import { useTheme } from '../contexts/ThemeContext';
 
-const colorsByStatus = {
-  created: "#CBD5E0",
-  running: "#3182CE",
-  completed: "#48BB78",
-  failed: "#E53E3E",
-  stopped: "#ED8936",
-  };
+const getColorsByStatus = (theme) => ({
+  created: theme.tokens.grey[500],
+  running: theme.colors.info.main,
+  completed: theme.colors.success.main,
+  failed: theme.colors.error.main,
+  stopped: theme.colors.warning.main,
+});
 
 const IconButton = ({ onClick, title, children, variant = "default" }) => {
   const [hovered, setHovered] = useState(false);
+  const { theme } = useTheme();
 
   return (
     <button
@@ -31,13 +32,13 @@ const IconButton = ({ onClick, title, children, variant = "default" }) => {
         border: "none",
         background: hovered
           ? variant === "danger"
-            ? "#FFF5F5"
-            : "#EDF2F7"
+            ? theme.tokens.ui.warning
+            : theme.tokens.grey[300]
           : "transparent",
         cursor: "pointer",
         padding: "6px",
         borderRadius: "6px",
-        color: variant === "danger" ? "#E53E3E" : "#2D3748",
+        color: variant === "danger" ? theme.colors.danger.main : theme.colors.text.primary,
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
@@ -150,7 +151,7 @@ const PauseIcon = ({ size = 20 }) => (
 
 const LogsIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M4 6h16M4 12h16M4 18h10" stroke="#2D3748" strokeWidth="2" strokeLinecap="round" />
+    <path d="M4 6h16M4 12h16M4 18h10" stroke="pink" strokeWidth="2" strokeLinecap="round" />
   </svg>
 );
 
@@ -168,34 +169,39 @@ function getPlotsUrl(code) {
 }
 
 // Card component for sections
-const Card = ({ title, children, style = {} }) => (
-  <div
-    style={{
-      background: "white",
-      borderRadius: "12px",
-      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-      overflow: "hidden",
-    ...style,
-    }}
-  >
-    {title && (
-      <div
-        style={{
-          padding: "16px 20px",
-          borderBottom: "1px solid #edf2f7",
-          background: "#f8fafc",
-        }}
-      >
-        <h3 style={{ margin: 0, color: "#2d3748", fontSize: "18px" }}>
-          {title}
-        </h3>
-      </div>
-    )}
-    <div style={{ padding: "20px" }}>{children}</div>
-  </div>
-);
+const Card = ({ title, children, style = {} }) => {
+  const { theme } = useTheme();
+  return (
+    <div
+      style={{
+        background: theme.colors.background.paper,
+        borderRadius: "12px",
+        boxShadow: theme.shadows.sm,
+        overflow: "hidden",
+      ...style,
+      }}
+    >
+      {title && (
+        <div
+          style={{
+            padding: "16px 20px",
+            borderBottom: `1px solid ${theme.tokens.ui.divider}`,
+            background: theme.colors.background.main,
+          }}
+        >
+          <h3 style={{ margin: 0, color: theme.colors.text.primary, fontSize: "18px" }}>
+            {title}
+          </h3>
+        </div>
+      )}
+      <div style={{ padding: "20px" }}>{children}</div>
+    </div>
+  );
+};
 
 const StatusCircle = ({ status, progress = 0 }) => {
+  const { theme } = useTheme();
+  const colorsByStatus = getColorsByStatus(theme);
   const s = String(status || "").toLowerCase();
   const radius = 12;
   const circumference = 2 * Math.PI * radius;
@@ -208,7 +214,7 @@ const StatusCircle = ({ status, progress = 0 }) => {
         <circle cx="14" cy="14" r="12" fill={colorsByStatus.completed} />
         <path
           d="M8 14l4 4 8-8"
-          stroke="white"
+          stroke={theme.tokens.grey[100]}
           strokeWidth="2.5"
           fill="none"
           strokeLinecap="round"
@@ -224,7 +230,7 @@ const StatusCircle = ({ status, progress = 0 }) => {
         <circle cx="14" cy="14" r="12" fill={colorsByStatus.failed} />
         <path
           d="M10 10l8 8M18 10l-8 8"
-          stroke="white"
+          stroke={theme.tokens.grey[100]}
           strokeWidth="2.5"
           strokeLinecap="round"
         />
@@ -239,7 +245,7 @@ const StatusCircle = ({ status, progress = 0 }) => {
           cx="16"
           cy="16"
           r={radius}
-          stroke="#E2E8F0"
+          stroke={theme.colors.border}
           strokeWidth="4"
           fill="none"
         />
@@ -268,24 +274,24 @@ const StatusCircle = ({ status, progress = 0 }) => {
           cy="14"
           r="12"
           fill="none"
-          stroke="#A0AEC0"
+          stroke={theme.tokens.grey[600]}
           strokeWidth="2.5"
           strokeDasharray="4 3"
         />
         {/* Plus sign */}
-        <rect x="13" y="8" width="2" height="12" rx="1" fill="#A0AEC0" />
-        <rect x="8" y="13" width="12" height="2" rx="1" fill="#A0AEC0" />
+        <rect x="13" y="8" width="2" height="12" rx="1" fill={theme.tokens.grey[600]} />
+        <rect x="8" y="13" width="12" height="2" rx="1" fill={theme.tokens.grey[600]} />
       </svg>
     );
   }
   // stopped/others: empty circle with pause sign
-  const fill = s === "stopped" ? colorsByStatus.stopped : "#CBD5E0";
+  const fill = s === "stopped" ? colorsByStatus.stopped : theme.tokens.grey[500];
   return (
     <svg width="28" height="28" viewBox="0 0 28 28">
       <circle cx="14" cy="14" r="12" fill={fill} />
       {/* Pause sign: two vertical bars */}
-      <rect x="9" y="8" width="3" height="12" rx="1" fill="#fff" />
-      <rect x="16" y="8" width="3" height="12" rx="1" fill="#fff" />
+      <rect x="9" y="8" width="3" height="12" rx="1" fill={theme.colors.text.primary} />
+      <rect x="16" y="8" width="3" height="12" rx="1" fill={theme.colors.text.primary} />
     </svg>
   );
 };
@@ -298,6 +304,8 @@ const FulltestDashboard = () => {
   const [error, setError] = useState(null);
   const [progressById, setProgressById] = useState({});
   const [jobStatus, setJobStatus] = useState(null);
+  const { theme } = useTheme();
+  const colorsByStatus = getColorsByStatus(theme);
 
   // New state: filters and pagination
   const [searchTerm, setSearchTerm] = useState("");
@@ -625,14 +633,15 @@ const FulltestDashboard = () => {
         padding: "24px",
         maxWidth: "1400px",
         margin: "0 auto",
-        background: "linear-gradient(120deg, #f8fafc 60%, #e2e8f0 100%)",
+        background: `linear-gradient(120deg, ${theme.colors.border} 60%, ${theme.colors.border} 100%)`,
         minHeight: "100vh",
+        borderRadius: "16px",
       }}
     >
       {jobStatus && (
         <section
           style={{
-            background: "white",
+            background: theme.colors.background.paper,
             padding: "24px 32px",
             borderRadius: "16px",
             boxShadow: "0 4px 24px 0 rgba(44,62,80,0.08)",
@@ -640,13 +649,13 @@ const FulltestDashboard = () => {
             display: "flex",
             alignItems: "center",
             gap: "32px",
-            border: "1px solid #e2e8f0",
+            border: `1px solid ${theme.colors.border}`,
           }}
         >
           <div style={{ flex: "0 0 auto" }}>
             <h3 style={{
               margin: 0,
-              color: "#2d3748",
+              color: theme.colors.text.primary,
               fontSize: "22px",
               fontWeight: 700,
               letterSpacing: "0.01em"
@@ -655,13 +664,13 @@ const FulltestDashboard = () => {
                 display: "inline-block",
                 verticalAlign: "middle",
                 marginRight: "10px",
-                color: "#3182ce"
+                color: theme.colors.info.main
               }}>⏱️</span>
               Job Status
             </h3>
             <div style={{
               fontSize: "13px",
-              color: "#718096",
+              color: theme.colors.text.secondary,
               marginTop: "2px"
             }}>
               Cluster queue overview
@@ -674,48 +683,50 @@ const FulltestDashboard = () => {
             justifyContent: "flex-end"
           }}>
             <div style={{
-              background: "#ebf8ff",
-              color: "rgba(49,130,206,1)",
+              background: theme.tokens.accent.blue.extra,
+              color: theme.tokens.accent.blue.main,
               borderRadius: "8px",
               padding: "12px 20px",
               minWidth: "120px",
               textAlign: "center",
               fontWeight: 600,
               fontSize: "16px",
-              boxShadow: "0 1px 4px 0 rgba(49,130,206,0.04)",
-              border: "1px solid rgba(49,130,206,0.5)"
+              boxShadow: theme.shadows.sm,
+              border: `1px solid ${theme.tokens.accent.blue.dark}`
             }}>
-              <div style={{ fontSize: "13px", color: "rgba(49,130,206,1)", fontWeight: 500, marginBottom: "2px" }}>High Priority</div>
+              <div style={{ fontSize: "13px", color: theme.tokens.accent.blue.main, fontWeight: 500, marginBottom: "2px" }}>High Priority</div>
               {jobStatus.high_priority_jobs}
             </div>
             <div style={{
-              background: "#fefcbf",
-              color: "rgba(237, 137, 54, 1)",
+              background: theme.tokens.accent.purple.extra,
+              color: theme.tokens.accent.purple.dark,
               borderRadius: "8px",
               padding: "12px 20px",
               minWidth: "120px",
               textAlign: "center",
               fontWeight: 600,
               fontSize: "16px",
-              boxShadow: "0 1px 4px 0 rgba(237,137,54,0.04)",
-              border: "1px solid rgba(237,137,54,0.5)"
+              boxShadow: theme.shadows.sm,
+              border: `1px solid ${theme.tokens.accent.purple.dark}`
             }}>
-              <div style={{ fontSize: "13px", color: "rgba(237, 137, 54, 1)", fontWeight: 500, marginBottom: "2px" }}>Normal Priority</div>
+              <div style={{ fontSize: "13px", color: theme.tokens.accent.purple.main, fontWeight: 500, marginBottom: "2px" }}>
+                Normal Priority
+              </div>
               {jobStatus.normal_priority_jobs}
             </div>
             <div style={{
-              background: "#c6f6d5",
-              color: "rgba(72,187,120, 1)",
+              background: theme.tokens.accent.green.extra,
+              color: theme.tokens.accent.green.main,
               borderRadius: "8px",
               padding: "12px 20px",
               minWidth: "120px",
               textAlign: "center",
               fontWeight: 600,
               fontSize: "16px",
-              boxShadow: "0 1px 4px 0 rgba(72,187,120,0.04)",
-              border: "1px solid rgba(72,187,120,0.5)"
+              boxShadow: theme.shadows.sm,
+              border: `1px solid ${theme.tokens.accent.green.dark}`
             }}>
-              <div style={{ fontSize: "13px", color: "rgba(72,187,120, 1)", fontWeight: 500, marginBottom: "2px" }}>Running Total</div>
+              <div style={{ fontSize: "13px", color: theme.tokens.accent.green.main, fontWeight: 500, marginBottom: "2px" }}>Running Total</div>
               {jobStatus.total_running_jobs}
             </div>
           </div>
@@ -732,7 +743,7 @@ const FulltestDashboard = () => {
       >
         <h2
           style={{
-            color: "#1a202c",
+            color: theme.colors.text.primary,
           margin: 0,
             fontSize: "24px",
             fontWeight: "600",
@@ -746,23 +757,23 @@ const FulltestDashboard = () => {
             padding: '10px 20px',
             border: 'none',
             borderRadius: '8px',
-            background: 'linear-gradient(90deg, #3182CE 0%, #63B3ED 100%)',
-            color: 'white',
+            background: `linear-gradient(90deg, ${theme.colors.info.main} 0%, ${theme.colors.info.light} 100%)`,
+            color: theme.tokens.grey[100],
             fontWeight: 600,
             fontSize: '16px',
-            boxShadow: '0 2px 8px 0 rgba(49,130,206,0.10)',
+            boxShadow: theme.shadows.sm,
             cursor: 'pointer',
             transition: 'background 0.2s, box-shadow 0.2s',
             outline: 'none',
             letterSpacing: '0.5px'
           }}
           onMouseOver={e => {
-            e.currentTarget.style.background = 'linear-gradient(90deg, #2563EB 0%, #4299E1 100%)';
-            e.currentTarget.style.boxShadow = '0 4px 16px 0 rgba(49,130,206,0.18)';
+            e.currentTarget.style.background = `linear-gradient(90deg, ${theme.colors.info.dark} 0%, ${theme.colors.info.main} 100%)`;
+            e.currentTarget.style.boxShadow = theme.shadows.md;
           }}
           onMouseOut={e => {
-            e.currentTarget.style.background = 'linear-gradient(90deg, #3182CE 0%, #63B3ED 100%)';
-            e.currentTarget.style.boxShadow = '0 2px 8px 0 rgba(49,130,206,0.10)';
+            e.currentTarget.style.background = `linear-gradient(90deg, ${theme.colors.info.main} 0%, ${theme.colors.info.light} 100%)`;
+            e.currentTarget.style.boxShadow = theme.shadows.sm;
           }}
         >
           <svg
@@ -774,7 +785,7 @@ const FulltestDashboard = () => {
             xmlns="http://www.w3.org/2000/svg"
           >
             <circle cx="10" cy="10" r="10" fill="#fff" fillOpacity="0.50"/>
-            <path d="M10 5v10M5 10h10" stroke="#3182CE" strokeWidth="2" strokeLinecap="round"/>
+            <path d="M10 5v10M5 10h10" stroke={theme.colors.info.main} strokeWidth="2" strokeLinecap="round"/>
           </svg>
           New Fulltest
         </button>
@@ -782,19 +793,19 @@ const FulltestDashboard = () => {
 
       {isCreateOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', borderRadius: '8px', padding: '16px', width: '90%', maxWidth: '480px' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '12px', color: '#2D3748' }}>Create New Fulltest</h3>
+          <div style={{ background: theme.colors.background.paper, borderRadius: '8px', padding: '16px', width: '90%', maxWidth: '480px' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '12px', color: theme.colors.text.primary }}>Create New Fulltest</h3>
             <div style={{ display: 'grid', gap: '8px' }}>
-              <label style={{ fontSize: '12px', color: '#4A5568' }}>Name</label>
-              <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g., sahand_202508121535" style={{ padding: '8px 10px', border: '1px solid #E2E8F0', borderRadius: '6px' }} />
-              <label style={{ fontSize: '12px', color: '#4A5568' }}>Tag (optional)</label>
-              <input value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="comma,separated,tags" style={{ padding: '8px 10px', border: '1px solid #E2E8F0', borderRadius: '6px' }} />
-              <label style={{ fontSize: '12px', color: '#4A5568' }}>Description (optional)</label>
-              <textarea value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Describe the fulltest" style={{ padding: '8px 10px', border: '1px solid #E2E8F0', borderRadius: '6px', minHeight: '80px' }} />
+              <label style={{ fontSize: '12px', color: theme.colors.text.secondary }}>Name</label>
+              <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g., sahand_202508121535" style={{ padding: '8px 10px', border: `1px solid ${theme.colors.border}`, borderRadius: '6px' }} />
+              <label style={{ fontSize: '12px', color: theme.colors.text.secondary }}>Tag (optional)</label>
+              <input value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="comma,separated,tags" style={{ padding: '8px 10px', border: `1px solid ${theme.colors.border}`, borderRadius: '6px' }} />
+              <label style={{ fontSize: '12px', color: theme.colors.text.secondary }}>Description (optional)</label>
+              <textarea value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Describe the fulltest" style={{ padding: '8px 10px', border: `1px solid ${theme.colors.border}`, borderRadius: '6px', minHeight: '80px' }} />
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px' }}>
-              <button onClick={() => setIsCreateOpen(false)} disabled={creating} style={{ padding: '8px 12px', border: '1px solid #CBD5E0', borderRadius: '6px', background: 'white', cursor: creating ? 'not-allowed' : 'pointer' }}>Cancel</button>
-              <button onClick={handleCreate} disabled={creating} style={{ padding: '8px 12px', border: '1px solid #3182CE', borderRadius: '6px', background: '#3182CE', color: 'white', cursor: creating ? 'not-allowed' : 'pointer' }}>{creating ? 'Creating...' : 'Create'}</button>
+              <button onClick={() => setIsCreateOpen(false)} disabled={creating} style={{ padding: '8px 12px', border: `1px solid ${theme.colors.border}`, borderRadius: '6px', background: theme.colors.background.paper, cursor: creating ? 'not-allowed' : 'pointer', color: theme.colors.text.primary }}>Cancel</button>
+              <button onClick={handleCreate} disabled={creating} style={{ padding: '8px 12px', border: `1px solid ${theme.colors.info.main}`, borderRadius: '6px', background: theme.colors.info.main, color: theme.tokens.grey[100], cursor: creating ? 'not-allowed' : 'pointer' }}>{creating ? 'Creating...' : 'Create'}</button>
             </div>
           </div>
         </div>
@@ -803,15 +814,15 @@ const FulltestDashboard = () => {
       {/* Pod logs modal */}
       {isPodLogsOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
-          <div style={{ background: 'white', borderRadius: '10px', width: '95%', maxWidth: '70vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ fontWeight: 600, color: '#2D3748' }}>Kubernetes Container Logs</div>
-              <button onClick={() => setIsPodLogsOpen(false)} style={{ border: '1px solid #E2E8F0', background: 'white', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer' }}>Close</button>
+          <div style={{ background: theme.colors.background.paper, borderRadius: '10px', width: '95%', maxWidth: '70vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontWeight: 600, color: theme.colors.text.primary }}>Kubernetes Container Logs</div>
+              <button onClick={() => setIsPodLogsOpen(false)} style={{ border: `1px solid ${theme.colors.border}`, background: theme.colors.background.paper, borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', color: theme.colors.text.primary }}>Close</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', minHeight: 0, flex: 1 }}>
-              <div style={{ borderRight: '1px solid #E2E8F0', padding: '10px', overflowY: 'auto' }}>
+              <div style={{ borderRight: `1px solid ${theme.colors.border}`, padding: '10px', overflowY: 'auto' }}>
                 {Object.keys(podLogsMap).length === 0 ? (
-                  <div style={{ color: '#A0AEC0', fontSize: '14px' }}>No pods</div>
+                  <div style={{ color: theme.colors.text.disabled, fontSize: '14px' }}>No pods</div>
                 ) : (
                   Object.keys(podLogsMap).map(pod => (
                     <div
@@ -822,9 +833,9 @@ const FulltestDashboard = () => {
                         marginBottom: '6px',
                         borderRadius: '6px',
                         cursor: 'pointer',
-                        background: selectedPod === pod ? '#EDF2F7' : 'transparent',
-                        color: selectedPod === pod ? '#2D3748' : '#4A5568',
-                        border: '1px solid #E2E8F0',
+                        background: selectedPod === pod ? theme.tokens.grey[300] : 'transparent',
+                        color: selectedPod === pod ? theme.colors.text.primary : theme.colors.text.secondary,
+                        border: `1px solid ${theme.colors.border}`,
                         display: 'inline-block',
                         maxWidth: '100%',
                         wordBreak: 'break-all',
@@ -840,8 +851,8 @@ const FulltestDashboard = () => {
               <div style={{ padding: '10px', overflow: 'auto' }}>
                 <div
                   style={{
-                    background: '#2D3748',
-                    color: '#E2E8F0',
+                    background: theme.tokens.grey[800],
+                    color: theme.tokens.grey[300],
                     padding: '12px',
                     borderRadius: '8px',
                     whiteSpace: 'pre-wrap',
@@ -865,10 +876,10 @@ const FulltestDashboard = () => {
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           <Card title="Fulltest History">
             {loading && (
-              <div style={{ padding: "8px", color: "#718096" }}>Loading...</div>
+              <div style={{ padding: "8px", color: theme.colors.text.secondary }}>Loading...</div>
             )}
             {error && (
-              <div style={{ padding: "8px", color: "#E53E3E" }}>
+              <div style={{ padding: "8px", color: theme.colors.error.main }}>
                 {String(error)}
               </div>
             )}
@@ -881,12 +892,12 @@ const FulltestDashboard = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { setPage(1); refreshList(1, e.target.value); } }}
-                style={{ flex: 1, padding: "8px 10px", border: "1px solid #E2E8F0", borderRadius: "6px" }}
+                style={{ flex: 1, padding: "8px 10px", border: `1px solid ${theme.colors.border}`, borderRadius: "6px" }}
               />
               <select
                 value={selectedTag}
                 onChange={(e) => setSelectedTag(e.target.value)}
-                style={{ padding: "8px 10px", border: "1px solid #E2E8F0", borderRadius: "6px" }}
+                style={{ padding: "8px 10px", border: `1px solid ${theme.colors.border}`, borderRadius: "6px" }}
               >
                 <option value="">All Tags</option>
                 {allTags.map(t => (
@@ -896,7 +907,7 @@ const FulltestDashboard = () => {
               <select
                 value={selectedImprovement}
                 onChange={(e) => setSelectedImprovement(e.target.value)}
-                style={{ padding: "8px 10px", border: "1px solid #E2E8F0", borderRadius: "6px" }}
+                style={{ padding: "8px 10px", border: `1px solid ${theme.colors.border}`, borderRadius: "6px" }}
               >
                 <option value="">All Improvements</option>
                 {allImprovements.map(imp => (
@@ -905,7 +916,7 @@ const FulltestDashboard = () => {
               </select>
               <button
                 onClick={() => { setPage(1); refreshList(1, searchTerm); }}
-                style={{ padding: "8px 12px", border: "1px solid #CBD5E0", borderRadius: "6px", background: "white", cursor: "pointer" }}
+                style={{ padding: "8px 12px", border: `1px solid ${theme.colors.border}`, borderRadius: "6px", background: theme.colors.background.paper, cursor: "pointer", color: theme.colors.text.primary }}
               >
                 Apply
               </button>
@@ -922,11 +933,11 @@ const FulltestDashboard = () => {
               >
                 <thead>
                   <tr>
-                    <th style={{ ...thStyle, textAlign: "left" }}>Name</th>
-                    <th style={{ ...thStyle, textAlign: "center" }}>Tags</th>
-                    <th style={{ ...thStyle, textAlign: "center" }}>Improvements</th>
-                    <th style={{ ...thStyle, textAlign: "center" }}>Status</th>
-                    <th style={{ ...thStyle, textAlign: "center" }}>Actions</th>
+                    <th style={{ ...thStyle(theme), textAlign: "left" }}>Name</th>
+                    <th style={{ ...thStyle(theme), textAlign: "center" }}>Tags</th>
+                    <th style={{ ...thStyle(theme), textAlign: "center" }}>Improvements</th>
+                    <th style={{ ...thStyle(theme), textAlign: "center" }}>Status</th>
+                    <th style={{ ...thStyle(theme), textAlign: "center" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -935,7 +946,7 @@ const FulltestDashboard = () => {
                     const meta = nameToMeta[nm] || { tags: [], improvements: [] };
                     return (
                     <tr key={test.id} style={{ transition: "all 0.2s ease" }}>
-                      <td style={{ ...tdStyle }}>
+                      <td style={{ ...tdStyle(theme) }}>
                         <div
                           style={{
                             display: "flex",
@@ -947,28 +958,28 @@ const FulltestDashboard = () => {
                               {nm || `#${test.id}`}
                             </div>
                           </div>
-                          <div style={{ fontSize: "12px", color: "#718096", marginTop: "2px" }}>
+                          <div style={{ fontSize: "12px", color: theme.colors.text.secondary, marginTop: "2px" }}>
                             {formatDate(deriveFulltestDate(test))}
                           </div>
                         </td>
-                        <td style={{ ...tdStyle, textAlign: "center" }}>
+                        <td style={{ ...tdStyle(theme), textAlign: "center" }}>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'center' }}>
                             {meta.tags.slice(0, 3).map(tag => (
-                              <span key={tag} style={{ padding: '2px 6px', border: '1px solid #E2E8F0', borderRadius: '10px', fontSize: '11px', color: '#4A5568' }}>{tag}</span>
+                              <span key={tag} style={{ padding: '2px 6px', border: `1px solid ${theme.colors.border}`, borderRadius: '10px', fontSize: '11px', color: theme.colors.text.secondary }}>{tag}</span>
                             ))}
                             {meta.tags.length > 3 && (
-                              <span style={{ fontSize: '11px', color: '#718096' }}>+{meta.tags.length - 3}</span>
+                              <span style={{ fontSize: '11px', color: theme.colors.text.secondary }}>+{meta.tags.length - 3}</span>
                             )}
                         </div>
                       </td>
-                      <td style={{ ...tdStyle, textAlign: "center" }}>
+                      <td style={{ ...tdStyle(theme), textAlign: "center" }}>
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', flexWrap: 'wrap' }}>
                             {meta.improvements.map((imp, idx) => (
-                              <span key={idx} style={{ padding: '2px 6px', borderRadius: '10px', fontSize: '11px', border: '1px solid #E2E8F0', backgroundColor: imp === 'Open' ? '#F0FFF4' : imp === 'Close' ? '#FFF5F5' : '#EBF8FF', color: imp === 'Open' ? '#38A169' : imp === 'Close' ? '#E53E3E' : '#3182CE' }}>{imp}</span>
+                              <span key={idx} style={{ padding: '2px 6px', borderRadius: '10px', fontSize: '11px', border: `1px solid ${theme.colors.border}`, backgroundColor: imp === 'Open' ? theme.tokens.success.light : imp === 'Close' ? theme.tokens.error.light : theme.tokens.info.light, color: imp === 'Open' ? theme.tokens.success.main : imp === 'Close' ? theme.tokens.error.main : theme.tokens.info.main }}>{imp}</span>
                             ))}
                           </div>
                       </td>
-                      <td style={{ ...tdStyle, textAlign: "center" }}>
+                      <td style={{ ...tdStyle(theme), textAlign: "center" }}>
                         <div
                           style={{
                             display: "flex",
@@ -992,7 +1003,7 @@ const FulltestDashboard = () => {
                           />
                         </div>
                       </td>
-                      <td style={{ ...tdStyle, textAlign: "center" }}>
+                      <td style={{ ...tdStyle(theme), textAlign: "center" }}>
                         <div
                           style={{
                             display: "flex",
@@ -1057,7 +1068,7 @@ const FulltestDashboard = () => {
               <button
                 onClick={() => { const p = Math.max(1, page - 1); setPage(p); refreshList(p, searchTerm); }}
                 disabled={!prevUrl}
-                style={{ padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: '6px', background: 'white', cursor: prevUrl ? 'pointer' : 'not-allowed', color: prevUrl ? '#2D3748' : '#A0AEC0' }}
+                style={{ padding: '8px 12px', border: `1px solid ${theme.colors.border}`, borderRadius: '6px', background: theme.colors.background.paper, cursor: prevUrl ? 'pointer' : 'not-allowed', color: prevUrl ? theme.colors.text.primary : theme.colors.text.disabled }}
               >
                 Previous
               </button>
@@ -1067,7 +1078,7 @@ const FulltestDashboard = () => {
               <button
                 onClick={() => { const p = page + 1; setPage(p); refreshList(p, searchTerm); }}
                 disabled={!nextUrl}
-                style={{ padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: '6px', background: 'white', cursor: nextUrl ? 'pointer' : 'not-allowed', color: nextUrl ? '#2D3748' : '#A0AEC0' }}
+                style={{ padding: '8px 12px', border: `1px solid ${theme.colors.border}`, borderRadius: '6px', background: theme.colors.background.paper, cursor: nextUrl ? 'pointer' : 'not-allowed', color: nextUrl ? theme.colors.text.primary : theme.colors.text.disabled }}
               >
                 Next
               </button>
@@ -1089,8 +1100,8 @@ const FulltestDashboard = () => {
           >
             <pre
               style={{
-                background: "#2d3748",
-                color: "#e2e8f0",
+                background: theme.tokens.grey[800],
+                color: theme.tokens.grey[300],
                 padding: "16px",
                 borderRadius: "8px",
                 maxHeight: "500px",
@@ -1111,18 +1122,19 @@ const FulltestDashboard = () => {
   );
 };
 
-// Shared styles
-const thStyle = {
+// Shared styles (theme-aware)
+const thStyle = (theme) => ({
   padding: "12px",
   textAlign: "left",
-  borderBottom: "2px solid #edf2f7",
-  color: "#4a5568",
+  borderBottom: `2px solid ${theme.tokens.ui.divider}`,
+  color: theme.colors.text.secondary,
   fontWeight: "600",
-};
+});
 
-const tdStyle = {
+const tdStyle = (theme) => ({
   padding: "16px 12px",
-  borderBottom: "1px solid #edf2f7",
-};
+  borderBottom: `1px solid ${theme.tokens.ui.divider}`,
+  color: theme.colors.text.primary,
+});
 
 export default FulltestDashboard;

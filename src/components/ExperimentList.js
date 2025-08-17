@@ -244,7 +244,7 @@ const ExperimentList = () => {
         fontSize: '11px',
         fontWeight: '500',
         backgroundColor: selected ? theme.colors.info.main : theme.tokens.grey[300],
-        color: selected ? 'white' : theme.tokens.grey[800],
+        color: selected ? theme.tokens.grey[100] : theme.tokens.grey[800],
         cursor: onClick ? 'pointer' : 'default',
         display: 'inline-block',
         margin: '2px',
@@ -366,7 +366,7 @@ const ExperimentList = () => {
         padding: '6px 12px',
         borderRadius: '16px',
         border: '1px solid #E2E8F0',
-        background: active ? '#EDF2F7' : 'white',
+        background: active ? '#EDF2F7' : theme.colors.background.paper,
         fontSize: '13px',
         cursor: 'pointer',
         display: 'flex',
@@ -377,7 +377,7 @@ const ExperimentList = () => {
       {label}
       <span style={{ 
         background: active ? '#4A5568' : '#A0AEC0',
-        color: 'white',
+        color: theme.tokens.grey[100],
         padding: '2px 6px',
         borderRadius: '10px',
         fontSize: '11px',
@@ -722,7 +722,7 @@ const ExperimentList = () => {
             }}>
               <thead>
                 <tr>
-                  <th style={{ ...thStyle, maxWidth: '40px', borderRight: '1px solid #E2E8F0' }}>
+                  <th style={{ ...thStyle(theme), maxWidth: '40px', borderRight: `1px solid ${theme.colors.border}` }}>
                     <input
                       type="checkbox"
                       onChange={e => {
@@ -730,13 +730,13 @@ const ExperimentList = () => {
                       }}
                     />
                   </th>
-                  <th style={{ ...thStyle, textAlign: 'left', borderRight: '1px solid #E2E8F0' }}>Code</th>
+                  <th style={{ ...thStyle(theme), textAlign: 'left', borderRight: `1px solid ${theme.colors.border}` }}>Code</th>
                   <th 
                     style={{ 
-                      ...thStyle, 
+                      ...thStyle(theme), 
                       cursor: 'pointer',
                       userSelect: 'none',
-                      borderRight: '1px solid #E2E8F0'
+                      borderRight: `1px solid ${theme.colors.border}`
                     }}
                     onClick={() => {
                       setSortConfig({
@@ -747,11 +747,11 @@ const ExperimentList = () => {
                   >
                     Date {sortConfig.key === 'date' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }}>Author</th>
-                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }}>Description</th>
-                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }}>Tags</th>
-                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }}>Improvements</th>
-                  <th style={{ ...thStyle }}>Actions</th>
+                  <th style={{ ...thStyle(theme), borderRight: `1px solid ${theme.colors.border}` }}>Author</th>
+                  <th style={{ ...thStyle(theme), borderRight: `1px solid ${theme.colors.border}` }}>Description</th>
+                  <th style={{ ...thStyle(theme), borderRight: `1px solid ${theme.colors.border}` }}>Tags</th>
+                  <th style={{ ...thStyle(theme), borderRight: `1px solid ${theme.colors.border}` }}>Improvements</th>
+                  <th style={{ ...thStyle(theme) }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -763,13 +763,13 @@ const ExperimentList = () => {
                       key={exp.id}
                       style={{
                         transition: 'background-color 0.2s ease',
-                        backgroundColor: exp.status === 'invalid' || !exp.isValid ? '#FFF5F5' : 'white',
+                        backgroundColor: exp.status === 'invalid' || !exp.isValid ? '#FFF5F5' : theme.colors.background.paper,
                         '&:hover': {
                           backgroundColor: exp.status === 'invalid' || !exp.isValid ? '#FED7D7' : '#F7FAFC',
                         },
                       }}
                     >
-                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>
+                      <td style={{ ...tdStyle(theme), borderRight: `1px solid ${theme.tokens.ui.divider}` }}>
                         <input
                           type="checkbox"
                           checked={selectedExps.includes(exp.id)}
@@ -782,26 +782,26 @@ const ExperimentList = () => {
                           }}
                         />
                       </td>
-                      <td style={{ ...tdStyle, fontWeight: '500', textAlign: 'left', borderRight: '1px solid #F1F5F9' }}>
+                      <td style={{ ...tdStyle(theme), fontWeight: '500', textAlign: 'left', borderRight: `1px solid ${theme.tokens.ui.divider}` }}>
                         {exp.code}
                       </td>
-                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>{new Date(exp.date).toLocaleDateString()}</td>
-                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>{exp.author}</td>
-                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>{exp.description}</td>
-                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>
+                      <td style={{ ...tdStyle(theme), borderRight: `1px solid ${theme.tokens.ui.divider}` }}>{new Date(exp.date).toLocaleDateString()}</td>
+                      <td style={{ ...tdStyle(theme), borderRight: `1px solid ${theme.tokens.ui.divider}` }}>{exp.author}</td>
+                      <td style={{ ...tdStyle(theme), borderRight: `1px solid ${theme.tokens.ui.divider}` }}>{exp.description}</td>
+                      <td style={{ ...tdStyle(theme), borderRight: `1px solid ${theme.tokens.ui.divider}` }}>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', alignItems: 'flex-start', width: 'fit-content' }}>
                           {exp.tags.map(tag => (
                             <TagBadge key={tag} tag={tag} />
                           ))}
                         </div>
                       </td>
-                      <td style={{ ...tdStyle, width: 'fit-content', borderRight: '1px solid #F1F5F9' }}>
+                      <td style={{ ...tdStyle(theme), width: 'fit-content', borderRight: `1px solid ${theme.tokens.ui.divider}` }}>
                         <ImprovementBadges 
                           improvements={exp.improvements}
                           status={exp.status}
                         />
                       </td>
-                      <td style={{ ...tdStyle, width: 'fit-content' }}>
+                      <td style={{ ...tdStyle(theme), width: 'fit-content' }}>
                         <div style={{ display: 'flex', gap: '8px', boxSizing: 'border-box', width: 'fit-content' }}>
                           <Button 
                             variant="secondary" 
@@ -846,7 +846,7 @@ const ExperimentList = () => {
             }}>
               <thead>
                 <tr>
-                  <th style={{ ...thStyle, width: '40px', borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthData}>
+                  <th style={{ ...thStyle(theme), width: '40px', borderRight: `1px solid ${theme.colors.border}` }} rowSpan={headerDepthData}>
                     <input
                       type="checkbox"
                       onChange={e => {
@@ -854,20 +854,20 @@ const ExperimentList = () => {
                       }}
                     />
                   </th>
-                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthData}>Code</th>
-                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthData}>Date</th>
-                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthData}>Author</th>
-                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthData}>Status</th>
-                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthData}>Tags</th>
+                  <th style={{ ...thStyle(theme), borderRight: `1px solid ${theme.colors.border}` }} rowSpan={headerDepthData}>Code</th>
+                  <th style={{ ...thStyle(theme), borderRight: `1px solid ${theme.colors.border}` }} rowSpan={headerDepthData}>Date</th>
+                  <th style={{ ...thStyle(theme), borderRight: `1px solid ${theme.colors.border}` }} rowSpan={headerDepthData}>Author</th>
+                  <th style={{ ...thStyle(theme), borderRight: `1px solid ${theme.colors.border}` }} rowSpan={headerDepthData}>Status</th>
+                  <th style={{ ...thStyle(theme), borderRight: `1px solid ${theme.colors.border}` }} rowSpan={headerDepthData}>Tags</th>
                   {headerRowsData.length > 0 ? headerRowsData[0].map((cell, idx) => (
-                    <th key={`h1-${idx}`} style={{ ...thStyle, backgroundColor: '#F0FFF4', borderRight: '1px solid #E2E8F0' }} colSpan={cell.colSpan} rowSpan={cell.rowSpan}>{cell.label}</th>
+                    <th key={`h1-${idx}`} style={{ ...thStyle(theme), backgroundColor: '#F0FFF4', borderRight: `1px solid ${theme.colors.border}` }} colSpan={cell.colSpan} rowSpan={cell.rowSpan}>{cell.label}</th>
                   )) : null}
-                  <th style={{ ...thStyle }} rowSpan={headerDepthData}>Actions</th>
+                  <th style={{ ...thStyle(theme) }} rowSpan={headerDepthData}>Actions</th>
                 </tr>
                 {headerRowsData.slice(1).map((row, rIdx) => (
                   <tr key={`hr-${rIdx}`}>
                     {row.map((cell, idx) => (
-                      <th key={`h${rIdx+2}-${idx}`} style={{ ...thStyle, backgroundColor: '#F0FFF4', borderRight: '1px solid #E2E8F0' }} colSpan={cell.colSpan} rowSpan={cell.rowSpan}>{cell.label}</th>
+                      <th key={`h${rIdx+2}-${idx}`} style={{ ...thStyle(theme), backgroundColor: '#F0FFF4', borderRight: `1px solid ${theme.colors.border}` }} colSpan={cell.colSpan} rowSpan={cell.rowSpan}>{cell.label}</th>
                     ))}
                   </tr>
                 ))}
@@ -881,13 +881,13 @@ const ExperimentList = () => {
                       key={exp.id}
                       style={{
                         transition: 'background-color 0.2s ease',
-                        backgroundColor: exp.status === 'invalid' || !exp.isValid ? '#FFF5F5' : 'white',
+                        backgroundColor: exp.status === 'invalid' || !exp.isValid ? '#FFF5F5' : theme.colors.background.paper,
                         '&:hover': {
                           backgroundColor: exp.status === 'invalid' || !exp.isValid ? '#FED7D7' : '#F7FAFC',
                         },
                       }}
                     >
-                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>
+                      <td style={{ ...tdStyle(theme), borderRight: `1px solid ${theme.tokens.ui.divider}` }}>
                         <input
                           type="checkbox"
                           checked={selectedExps.includes(exp.id)}
@@ -900,16 +900,16 @@ const ExperimentList = () => {
                           }}
                         />
                       </td>
-                      <td style={{ ...tdStyle, fontWeight: '500', borderRight: '1px solid #F1F5F9' }}>
+                      <td style={{ ...tdStyle(theme), fontWeight: '500', borderRight: `1px solid ${theme.tokens.ui.divider}` }}>
                         {improved && url ? (
                           <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#3182CE', textDecoration: 'underline' }}>{exp.code}</a>
                         ) : (
                           exp.code
                         )}
                       </td>
-                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>{new Date(exp.date).toLocaleDateString()}</td>
-                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>{exp.author}</td>
-                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>
+                      <td style={{ ...tdStyle(theme), borderRight: `1px solid ${theme.tokens.ui.divider}` }}>{new Date(exp.date).toLocaleDateString()}</td>
+                      <td style={{ ...tdStyle(theme), borderRight: `1px solid ${theme.tokens.ui.divider}` }}>{exp.author}</td>
+                      <td style={{ ...tdStyle(theme), borderRight: `1px solid ${theme.tokens.ui.divider}` }}>
                         <span style={{
                           padding: '4px 8px',
                           borderRadius: '12px',
@@ -921,7 +921,7 @@ const ExperimentList = () => {
                           {exp.status}
                         </span>
                       </td>
-                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>
+                      <td style={{ ...tdStyle(theme), borderRight: `1px solid ${theme.tokens.ui.divider}` }}>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', maxWidth: '150px', alignItems: 'flex-start' }}>
                           {exp.tags.slice(0, 2).map(tag => (
                             <TagBadge key={tag} tag={tag} />
@@ -944,12 +944,12 @@ const ExperimentList = () => {
                         const v = getByPath(exp.financial, k);
                         const { text, style } = formatNumberCell(v);
                         return (
-                          <td key={k} style={{ ...tdStyle, ...style, borderRight: '1px solid #F1F5F9' }}>
+                          <td key={k} style={{ ...tdStyle(theme), ...style, borderRight: `1px solid ${theme.tokens.ui.divider}` }}>
                             {text}
                           </td>
                         );
                       })}
-                      <td style={tdStyle}>
+                      <td style={tdStyle(theme)}>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <Button 
                             variant="secondary" 
@@ -995,7 +995,7 @@ const ExperimentList = () => {
             }}>
               <thead>
                 <tr>
-                  <th style={{ ...thStyle, width: '40px', borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthMetrics}>
+                  <th style={{ ...thStyle(theme), width: '40px', borderRight: `1px solid ${theme.colors.border}` }} rowSpan={headerDepthMetrics}>
                     <input
                       type="checkbox"
                       onChange={e => {
@@ -1003,14 +1003,14 @@ const ExperimentList = () => {
                       }}
                     />
                   </th>
-                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthMetrics}>Code</th>
-                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthMetrics}>Date</th>
-                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthMetrics}>Status</th>
-                  <th style={{ ...thStyle, borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthMetrics}>Tags</th>
+                  <th style={{ ...thStyle(theme), borderRight: `1px solid ${theme.colors.border}` }} rowSpan={headerDepthMetrics}>Code</th>
+                  <th style={{ ...thStyle(theme), borderRight: `1px solid ${theme.colors.border}` }} rowSpan={headerDepthMetrics}>Date</th>
+                  <th style={{ ...thStyle(theme), borderRight: `1px solid ${theme.colors.border}` }} rowSpan={headerDepthMetrics}>Status</th>
+                  <th style={{ ...thStyle(theme), borderRight: `1px solid ${theme.colors.border}` }} rowSpan={headerDepthMetrics}>Tags</th>
                   
                   {/* Dynamic Financial Metrics from summary.json (average only) */}
                   {headerRowsMetrics.length > 0 ? headerRowsMetrics[0].map((cell, idx) => (
-                    <th key={`mh1-${idx}`} style={{ ...thStyle, backgroundColor: '#F0FFF4', borderRight: '1px solid #E2E8F0' }} colSpan={cell.colSpan} rowSpan={cell.rowSpan}>{cell.label}</th>
+                    <th key={`mh1-${idx}`} style={{ ...thStyle(theme), backgroundColor: '#F0FFF4', borderRight: `1px solid ${theme.colors.border}` }} colSpan={cell.colSpan} rowSpan={cell.rowSpan}>{cell.label}</th>
                   )) : null}
                   
                   {/* ML Metrics */}
@@ -1019,12 +1019,12 @@ const ExperimentList = () => {
                   {/* <th style={{ ...thStyle, backgroundColor: '#EBF8FF', borderRight: '1px solid #E2E8F0' }} rowSpan={headerDepthMetrics}>F1 Score</th> */}
                   {/* <th style={{ ...thStyle, backgroundColor: '#EBF8FF' }} rowSpan={headerDepthMetrics}>Accuracy</th> */}
                   
-                  <th style={{ ...thStyle }} rowSpan={headerDepthMetrics}>Actions</th>
+                  <th style={{ ...thStyle(theme) }} rowSpan={headerDepthMetrics}>Actions</th>
                 </tr>
                 {headerRowsMetrics.slice(1).map((row, rIdx) => (
                   <tr key={`mhr-${rIdx}`}>
                     {row.map((cell, idx) => (
-                      <th key={`mh${rIdx+2}-${idx}`} style={{ ...thStyle, backgroundColor: '#F0FFF4', borderRight: '1px solid #E2E8F0' }} colSpan={cell.colSpan} rowSpan={cell.rowSpan}>{cell.label}</th>
+                      <th key={`mh${rIdx+2}-${idx}`} style={{ ...thStyle(theme), backgroundColor: '#F0FFF4', borderRight: `1px solid ${theme.colors.border}` }} colSpan={cell.colSpan} rowSpan={cell.rowSpan}>{cell.label}</th>
                     ))}
                   </tr>
                 ))}
@@ -1038,13 +1038,13 @@ const ExperimentList = () => {
                       key={exp.id}
                       style={{
                         transition: 'background-color 0.2s ease',
-                        backgroundColor: exp.status === 'invalid' || !exp.isValid ? '#FFF5F5' : 'white',
+                        backgroundColor: exp.status === 'invalid' || !exp.isValid ? '#FFF5F5' : theme.colors.background.paper,
                         '&:hover': {
                           backgroundColor: exp.status === 'invalid' || !exp.isValid ? '#FED7D7' : '#F7FAFC',
                         },
                       }}
                     >
-                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>
+                      <td style={{ ...tdStyle(theme), borderRight: `1px solid ${theme.tokens.ui.divider}` }}>
                         <input
                           type="checkbox"
                           checked={selectedExps.includes(exp.id)}
@@ -1057,15 +1057,15 @@ const ExperimentList = () => {
                           }}
                         />
                       </td>
-                      <td style={{ ...tdStyle, fontWeight: '500', borderRight: '1px solid #F1F5F9' }}>
+                      <td style={{ ...tdStyle(theme), fontWeight: '500', borderRight: `1px solid ${theme.tokens.ui.divider}` }}>
                         {improved && url ? (
                           <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#3182CE', textDecoration: 'underline' }}>{exp.code}</a>
                         ) : (
                           exp.code
                         )}
                       </td>
-                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>{new Date(exp.date).toLocaleDateString()}</td>
-                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>
+                      <td style={{ ...tdStyle(theme), borderRight: `1px solid ${theme.tokens.ui.divider}` }}>{new Date(exp.date).toLocaleDateString()}</td>
+                      <td style={{ ...tdStyle(theme), borderRight: `1px solid ${theme.tokens.ui.divider}` }}>
                         <span style={{
                           padding: '4px 8px',
                           borderRadius: '12px',
@@ -1077,7 +1077,7 @@ const ExperimentList = () => {
                           {exp.status}
                         </span>
                       </td>
-                      <td style={{ ...tdStyle, borderRight: '1px solid #F1F5F9' }}>
+                      <td style={{ ...tdStyle(theme), borderRight: `1px solid ${theme.tokens.ui.divider}` }}>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', maxWidth: '120px', alignItems: 'flex-start' }}>
                           {exp.tags.slice(0, 2).map(tag => (
                             <TagBadge key={tag} tag={tag} />
@@ -1100,7 +1100,7 @@ const ExperimentList = () => {
                         const v = getByPath(exp.financial, k);
                         const { text, style } = formatNumberCell(v);
                         return (
-                          <td key={k} style={{ ...tdStyle, ...style, borderRight: '1px solid #F1F5F9' }}>
+                          <td key={k} style={{ ...tdStyle(theme), ...style, borderRight: `1px solid ${theme.tokens.ui.divider}` }}>
                             {text}
                           </td>
                         );
@@ -1139,7 +1139,7 @@ const ExperimentList = () => {
                         {(exp.mlMetrics?.accuracy * 100).toFixed(1) || '0.0'}%
                       </td> */}
                       
-                      <td style={tdStyle}>
+                      <td style={tdStyle(theme)}>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <Button 
                             variant="secondary" 
@@ -1189,9 +1189,9 @@ const ExperimentList = () => {
                 padding: '8px 16px',
                 border: '1px solid #E2E8F0',
                 borderRadius: '6px',
-                background: 'white',
+                background: theme.colors.background.paper,
                 cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                color: currentPage === 1 ? '#A0AEC0' : '#2D3748',
+                color: currentPage === 1 ? theme.colors.text.disabled : theme.colors.text.primary,
               }}
             >
               Previous
@@ -1211,9 +1211,9 @@ const ExperimentList = () => {
                 padding: '8px 16px',
                 border: '1px solid #E2E8F0',
                 borderRadius: '6px',
-                background: 'white',
+                background: theme.colors.background.paper,
                 cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                color: currentPage === totalPages ? '#A0AEC0' : '#2D3748',
+                color: currentPage === totalPages ? theme.colors.text.disabled : theme.colors.text.primary,
               }}
             >
               Next
@@ -1226,7 +1226,7 @@ const ExperimentList = () => {
             position: 'sticky',
             bottom: 0,
             padding: '16px',
-            background: 'white',
+            background: theme.colors.background.paper,
             borderTop: '1px solid #E2E8F0',
             display: 'flex',
             gap: '8px',
@@ -1277,7 +1277,7 @@ const ExperimentList = () => {
           zIndex: 1000,
         }}>
           <div style={{
-            backgroundColor: 'white',
+            backgroundColor: theme.colors.background.paper,
             borderRadius: '8px',
             padding: '24px',
             width: '90%',
@@ -1443,8 +1443,8 @@ const ExperimentList = () => {
                         borderRadius: '16px',
                         fontSize: '12px',
                         fontWeight: '500',
-                        backgroundColor: editForm.improvements.includes(imp) ? '#3182CE' : '#EDF2F7',
-                        color: editForm.improvements.includes(imp) ? 'white' : '#4A5568',
+                        backgroundColor: editForm.improvements.includes(imp) ? theme.colors.info.main : '#EDF2F7',
+                        color: editForm.improvements.includes(imp) ? theme.tokens.grey[100] : '#4A5568',
                         cursor: 'pointer',
                         border: '1px solid #E2E8F0',
                         transition: 'all 0.2s ease',
@@ -1474,24 +1474,24 @@ const ExperimentList = () => {
   );
 };
 
-const thStyle = {
+const thStyle = (theme) => ({
   textAlign: 'center',
   padding: '12px 12px',
   fontWeight: 600,
   fontSize: '12px',
-  color: '#4A5568',
-  borderBottom: '1px solid #E2E8F0',
-  backgroundColor: '#F7FAFC',
-};
+  color: theme.colors.text.secondary,
+  borderBottom: `1px solid ${theme.colors.border}`,
+  backgroundColor: theme.colors.background.main,
+});
 
-const tdStyle = {
+const tdStyle = (theme) => ({
   padding: '12px 12px',
-  borderBottom: '1px solid #EDF2F7',
-  color: '#2D3748',
+  borderBottom: `1px solid ${theme.tokens.ui.divider}`,
+  color: theme.colors.text.primary,
   textAlign: 'center',
   width: 'fit-content',
   alignItems: 'center',
   justifyContent: 'center',
-};
+});
 
 export default ExperimentList;

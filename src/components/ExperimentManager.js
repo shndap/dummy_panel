@@ -65,6 +65,7 @@ function getPlotsUrl(code) {
 }
 
 const Card = ({ title, value, color, expName, date }) => {
+  const { theme } = useTheme();
   // Format value to 5 decimals if it's a number
   let displayValue = value;
   if (typeof value === 'number') {
@@ -92,9 +93,9 @@ const Card = ({ title, value, color, expName, date }) => {
         flex: 1, 
         margin: '10px', 
         padding: '20px', 
-        background: 'white',
+        background: theme.colors.background.paper,
         borderRadius: '8px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        boxShadow: theme.shadows.sm,
         textAlign: 'center',
         border: `1px solid ${color}`,
       }}
@@ -255,9 +256,9 @@ const ExperimentManager = () => {
     );
 
     const colorFor = (type) => (
-      type === 'open' ? { border: 'rgba(75,192,192,1)', bg: 'rgba(75,192,192,0.2)' } :
-      type === 'close' ? { border: 'rgba(255,99,132,1)', bg: 'rgba(255,99,132,0.2)' } :
-      { border: 'rgba(54,162,235,1)', bg: 'rgba(54,162,235,0.2)' }
+      type === 'open' ? chartColors.open :
+      type === 'close' ? chartColors.close :
+      chartColors.reg
     );
 
     const datasets = types.map((type) => {
@@ -326,12 +327,13 @@ const ExperimentManager = () => {
   };
 
   return (
-    <div style={{ 
-      padding: '20px',
-      maxWidth: '1200px',
-      margin: '0 auto',
-      backgroundColor: theme.colors.background.main,
-      minHeight: '100vh'
+    <div style={{
+      padding: "24px",
+      maxWidth: "1200px",
+      margin: "0 auto",
+      background: `linear-gradient(120deg, ${theme.colors.border} 60%, ${theme.colors.border} 100%)`,
+      // minHeight: "100vh",
+      borderRadius: "16px",
     }}>
       <h2 style={{ 
         color: theme.colors.text.primary,
@@ -352,7 +354,8 @@ const ExperimentManager = () => {
             border: `1px solid ${theme.colors.border}`,
             background: isMigrating ? theme.tokens.grey[300] : theme.colors.background.paper,
             cursor: isMigrating ? 'not-allowed' : 'pointer',
-            fontSize: '13px'
+            fontSize: '13px',
+            color: theme.colors.text.primary
           }}
         >
           {isMigrating ? 'Refreshing…' : 'Refresh'}
@@ -396,7 +399,7 @@ const ExperimentManager = () => {
       }}>
         {/* Improvements List */}
         <div style={{ 
-          background: 'white',
+          background: theme.colors.background.paper,
           padding: '20px',
           borderRadius: '8px',
           boxShadow: theme.shadows.sm
@@ -436,7 +439,7 @@ const ExperimentManager = () => {
                           marginBottom: '10px',
                           borderLeft: '4px solid',
                           borderImage: `linear-gradient(to bottom, ${colorStops}) 1 100%`,
-                          backgroundColor: '#f8f9fa',
+                          backgroundColor: theme.colors.background.main,
                           borderRadius: '0 4px 4px 0'
                         }}
                       >
@@ -461,10 +464,16 @@ const ExperimentManager = () => {
                               padding: '2px 8px',
                               borderRadius: '10px',
                               fontSize: '11px',
-                              backgroundColor: imp === 'Open' ? theme.tokens.grey[100] : imp === 'Close' ? (theme.tokens.red?.light || '#FFF5F5') : theme.tokens.accent.blue.light,
-                              color: imp === 'Open' ? getThemeColor(theme, ThemeColors.SUCCESS) :
-                            imp === 'Close' ? getThemeColor(theme, ThemeColors.ERROR) :
-                            getThemeColor(theme, ThemeColors.INFO),
+                              backgroundColor: imp === 'Open'
+                                ? chartColors.open.bg
+                                : imp === 'Close'
+                                  ? chartColors.close.bg
+                                  : chartColors.reg.bg,
+                              color: imp === 'Open'
+                                ? chartColors.open.border
+                                : imp === 'Close'
+                                  ? chartColors.close.border
+                                  : chartColors.reg.border,
                               border: `1px solid ${theme.colors.border}`
                             }}>{imp}</span>
                           ))}
@@ -477,7 +486,7 @@ const ExperimentManager = () => {
 
         {/* Chart */}
         <div style={{ 
-          background: 'white',
+          background: theme.colors.background.paper,
           padding: '20px',
           borderRadius: '8px',
           boxShadow: theme.shadows.sm
@@ -486,7 +495,7 @@ const ExperimentManager = () => {
         </div>
 
       <div style={{ marginBottom: '20px', textAlign: 'right', display: 'flex', alignItems: 'center', height: '40px' }}>
-        <div style={{ marginLeft: 'auto' }}>Select plot type</div>
+        <div style={{ marginLeft: 'auto', color: theme.colors.text.secondary }}>Select plot type</div>
       </div>
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
@@ -495,7 +504,7 @@ const ExperimentManager = () => {
     borderRadius: '6px', 
     border: `1px solid ${theme.colors.border}`, 
     background: plotType === 'overall' ? getThemeColor(theme, ThemeColors.INFO) : theme.colors.background.paper, 
-    color: plotType === 'overall' ? 'white' : theme.colors.text.primary, 
+    color: plotType === 'overall' ? theme.tokens.grey[100] : theme.colors.text.primary, 
     cursor: 'pointer' 
   }}>Overall</button>
         <button onClick={() => setPlotType('classification')} style={{ 
@@ -503,7 +512,7 @@ const ExperimentManager = () => {
     borderRadius: '6px', 
     border: `1px solid ${theme.colors.border}`, 
     background: plotType === 'classification' ? getThemeColor(theme, ThemeColors.INFO) : theme.colors.background.paper, 
-    color: plotType === 'classification' ? 'white' : theme.colors.text.primary, 
+    color: plotType === 'classification' ? theme.tokens.grey[100] : theme.colors.text.primary, 
     cursor: 'pointer' 
   }}>Classification</button>
         <button onClick={() => setPlotType('open')} style={{ 
@@ -511,7 +520,7 @@ const ExperimentManager = () => {
     borderRadius: '6px', 
     border: `1px solid ${theme.colors.border}`, 
     background: plotType === 'open' ? getThemeColor(theme, ThemeColors.INFO) : theme.colors.background.paper, 
-    color: plotType === 'open' ? 'white' : theme.colors.text.primary, 
+    color: plotType === 'open' ? theme.tokens.grey[100] : theme.colors.text.primary, 
     cursor: 'pointer' 
   }}>Open</button>
         <button onClick={() => setPlotType('close')} style={{ 
@@ -519,7 +528,7 @@ const ExperimentManager = () => {
     borderRadius: '6px', 
     border: `1px solid ${theme.colors.border}`, 
     background: plotType === 'close' ? getThemeColor(theme, ThemeColors.INFO) : theme.colors.background.paper, 
-    color: plotType === 'close' ? 'white' : theme.colors.text.primary, 
+    color: plotType === 'close' ? theme.tokens.grey[100] : theme.colors.text.primary, 
     cursor: 'pointer' 
   }}>Close</button>
         <button onClick={() => setPlotType('reg')} style={{ 
@@ -527,7 +536,7 @@ const ExperimentManager = () => {
     borderRadius: '6px', 
     border: `1px solid ${theme.colors.border}`, 
     background: plotType === 'reg' ? getThemeColor(theme, ThemeColors.INFO) : theme.colors.background.paper, 
-    color: plotType === 'reg' ? 'white' : theme.colors.text.primary, 
+    color: plotType === 'reg' ? theme.tokens.grey[100] : theme.colors.text.primary, 
     cursor: 'pointer' 
   }}>Reg</button>
       </div>

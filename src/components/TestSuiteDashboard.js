@@ -79,7 +79,14 @@ const TestSuiteDashboard = () => {
   };
 
   return (
-    <div style={{ padding: 24 }}>
+    <div style={{
+      padding: "24px",
+      maxWidth: "1400px",
+      margin: "0 auto",
+      background: `linear-gradient(120deg, ${theme.colors.border} 30%, ${theme.colors.border} 50%)`,
+      minHeight: "100vh",
+      borderRadius: "16px",
+    }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h2 style={{ margin: 0, color: theme.colors.text.primary }}>Test Suite Dashboard</h2>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -91,7 +98,7 @@ const TestSuiteDashboard = () => {
       {loading && <div style={{ color: theme.colors.text.secondary }}>Loading...</div>}
       {error && <div style={{ color: theme.colors.danger.main }}>{String(error)}</div>}
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: 14 }}>
+        <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: 14, background: theme.colors.background.paper, borderRadius: 16 }}>
           <thead>
             <tr>
               <th style={{ textAlign: 'left', padding: 12, borderBottom: `2px solid ${theme.tokens.ui.divider}` }}>Asset</th>
@@ -186,7 +193,7 @@ const TestSuiteDashboard = () => {
                                 window.open(plotUrl, '_blank', 'noopener,noreferrer');
                               }
                             }}
-                            style={{ padding: '6px 10px', border: `1px solid ${theme.colors.info.main}`, borderRadius: 6, background: theme.colors.info.main, color: 'white', cursor: 'pointer' }}
+                            style={{ padding: '6px 10px', border: `1px solid ${theme.colors.info.main}`, borderRadius: 6, background: theme.colors.info.main, color: theme.tokens.grey[100], cursor: 'pointer' }}
                           >
                             View Plot
                           </button>

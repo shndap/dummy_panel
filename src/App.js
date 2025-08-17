@@ -6,7 +6,8 @@ import ExperimentList from './components/ExperimentList';
 import ExperimentComparison from './components/ExperimentComparison';
 import FulltestDashboard from './components/FulltestDashboard';
 import TestSuiteDashboard from './components/TestSuiteDashboard';
-import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { useTheme } from './contexts/ThemeContext';
+import ThemeSelector from './components/shared/ThemeSelector';
 
 const NavLink = ({ to, children }) => {
   const location = useLocation();
@@ -27,7 +28,7 @@ const NavLink = ({ to, children }) => {
         alignItems: 'center',
         gap: '8px',
         borderRadius: '6px',
-        backgroundColor: isActive ? theme.tokens.grey[300] : 'transparent',
+        backgroundColor: isActive ? theme.colors.primary.main : 'transparent',
         transition: 'all 0.2s ease',
         marginBottom: '4px',
       }}
@@ -45,9 +46,28 @@ function App() {
     setSidebarOpen(prev => !prev);
   };
 
+  const supportsTextClip = typeof CSS !== 'undefined' && (
+    (typeof CSS.supports === 'function' && CSS.supports('-webkit-background-clip:text')) ||
+    (typeof CSS.supports === 'function' && CSS.supports('background-clip:text'))
+  );
+
+  const titleGradientStyle = supportsTextClip ? {
+    backgroundImage: `linear-gradient(135deg, ${theme.colors.primary.main}, ${theme.colors.secondary.main})`,
+    backgroundRepeat: 'no-repeat',
+    backgroundSize: '100%',
+    WebkitBackgroundClip: 'text',
+    backgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    color: 'transparent',
+    display: 'inline',
+    fontWeight: '700',
+  } : {
+    color: theme.colors.primary.main,
+    fontWeight: '700',
+  };
+
   return (
-    <ThemeProvider>
-      <Router>
+    <Router>
         <div style={{ 
           display: 'flex', 
           flexDirection: 'column', 
@@ -64,69 +84,80 @@ function App() {
             zIndex: 1000,
           }}>
             <div style={{
-              // maxWidth: '1400px',
               margin: '0 auto',
               display: 'flex',
               alignItems: 'center',
-              gap: '16px',
+              justifyContent: 'space-between',
             }}>
-              <button
-                onClick={toggleSidebar}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '8px',
-                  borderRadius: '4px',
-                  color: theme.colors.text.primary,
-                }}
-              >
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    fontSize: '24px',
-                    transition: 'color 0.2s',
-                    color: isSidebarOpen ? theme.colors.text.primary : theme.colors.primary,
-                  }}
-                  aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-                  title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-                >
-                  {/* Hamburger icon */}
-                  <svg
-                    width="28"
-                    height="28"
-                    viewBox="0 0 28 28"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    style={{
-                      display: 'block',
-                    }}
-                  >
-                    <rect y="6" width="28" height="3" rx="1.5" fill="currentColor"/>
-                    <rect y="13" width="28" height="3" rx="1.5" fill="currentColor"/>
-                    <rect y="20" width="28" height="3" rx="1.5" fill="currentColor"/>
-                  </svg>
-                </span>
-              </button>
-              <h1 style={{
-                margin: 0,
-                fontSize: '24px',
-                fontWeight: '600',
-                color: theme.colors.text.primary,
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
               }}>
-                <span style={{
-                  background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`,
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  fontWeight: '700',
+                <button
+                  onClick={toggleSidebar}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '8px',
+                    borderRadius: '4px',
+                    color: theme.colors.text.primary,
+                  }}
+                >
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      fontSize: '24px',
+                      transition: 'color 0.2s',
+                      color: isSidebarOpen ? theme.colors.text.primary : theme.colors.primary.main,
+                    }}
+                    aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+                    title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+                  >
+                    {/* Hamburger icon */}
+                    <svg
+                      width="28"
+                      height="28"
+                      viewBox="0 0 28 28"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      style={{
+                        display: 'block',
+                      }}
+                    >
+                      <rect y="6" width="28" height="3" rx="1.5" fill="currentColor"/>
+                      <rect y="13" width="28" height="3" rx="1.5" fill="currentColor"/>
+                      <rect y="20" width="28" height="3" rx="1.5" fill="currentColor"/>
+                    </svg>
+                  </span>
+                </button>
+                <h1 style={{
+                  margin: 0,
+                  fontSize: '24px',
+                  fontWeight: '600',
+                  color: theme.colors.text.primary,
+                  background: 'none',
                 }}>
-                  PNL Dashboard
-                </span>
-              </h1>
+                  <span style={titleGradientStyle}>
+                    PNL Dashboard
+                  </span>
+                </h1>
+              </div>
+
+              {/* Theme Selector */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+              }}>
+                <ThemeSelector />
+              </div>
             </div>
           </header>
 
+          {/* Rest of the layout stays the same */}
           <div style={{ 
             display: 'flex',
             flex: 1,
@@ -190,7 +221,6 @@ function App() {
           </div>
         </div>
       </Router>
-    </ThemeProvider>
   );
 }
 

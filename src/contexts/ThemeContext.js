@@ -1,37 +1,27 @@
 import React, { createContext, useContext, useState, useMemo } from 'react';
-import { lightTheme, darkTheme, defaultTheme } from '../theme';
+import { themes } from '../theme';
 
 export const ThemeContext = createContext({
-  theme: { ...lightTheme, tokens: defaultTheme.colors },
-  isDarkMode: false,
-  toggleTheme: () => {},
+  theme: themes.light,
+  currentTheme: 'light',
+  setTheme: () => {},
 });
 
-export const useTheme = () => {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
-  return context;
-};
+export const useTheme = () => useContext(ThemeContext);
 
 export const ThemeProvider = ({ children }) => {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState('light');
 
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-  };
-
-  const theme = useMemo(() => {
-    const base = isDarkMode ? darkTheme : lightTheme;
-    // Always expose extended tokens from defaultTheme under theme.tokens
-    return { ...base, tokens: defaultTheme.colors };
-  }, [isDarkMode]);
+  const theme = useMemo(() => themes[currentTheme], [currentTheme]);
 
   const value = {
     theme,
-    isDarkMode,
-    toggleTheme,
+    currentTheme,
+    setTheme: (themeName) => {
+      if (themes[themeName]) {
+        setCurrentTheme(themeName);
+      }
+    },
   };
 
   return (

@@ -22,7 +22,7 @@ export const Button = ({ onClick, disabled, variant = 'primary', children, style
   const variants = {
     primary: {
       backgroundColor: disabled ? theme.colors.text.disabled : theme.colors.success.main,
-      color: 'white',
+      color: theme.tokens.grey[100],
       cursor: disabled ? 'not-allowed' : 'pointer',
     },
     secondary: {
@@ -32,7 +32,7 @@ export const Button = ({ onClick, disabled, variant = 'primary', children, style
     },
     danger: {
       backgroundColor: theme.colors.danger.main,
-      color: 'white',
+      color: theme.tokens.grey[100],
       cursor: disabled ? 'not-allowed' : 'pointer',
     },
   };
@@ -82,13 +82,13 @@ export const Card = ({ title, children, style = {} }) => {
 export const PageContainer = ({ children }) => {
   const { theme } = useTheme();
   return (
-    <div style={{ 
-      padding: '24px',
-      maxWidth: '1400px',
-      margin: '0 auto',
-      backgroundColor: theme.colors.background.main,
-      minHeight: '100vh',
-      cursor: 'default',
+    <div style={{
+      padding: "24px",
+      maxWidth: "1400px",
+      margin: "0 auto",
+      background: `linear-gradient(120deg, ${theme.colors.border} 60%, ${theme.colors.border} 100%)`,
+      minHeight: "100vh",
+      borderRadius: "16px",
     }}>
       {children}
     </div>
