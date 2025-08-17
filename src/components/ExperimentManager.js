@@ -110,7 +110,7 @@ const Card = ({ title, value, color, expName, date }) => {
         {displayValue}
       </p>
       {(expName || displayDate) && (
-        <div style={{ fontSize: '12px', color: '#888', marginTop: '-8px' }}>
+        <div style={{ fontSize: '12px', color: theme.colors.text.secondary, marginTop: '-8px' }}>
           {expName && <div>{expName}</div>}
           {displayDate && <div>{displayDate}</div>}
         </div>
@@ -405,7 +405,7 @@ const ExperimentManager = () => {
           boxShadow: theme.shadows.sm
         }}>
           <h3 style={{ 
-            color: theme.colors.text || theme.tokens.text?.main || '#333',
+            color: theme.colors.text.primary,
             marginTop: 0,
             marginBottom: '15px'
           }}>
