@@ -1,0 +1,21 @@
+# Development Dockerfile for React Frontend
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Set environment variables for development
+ARG REACT_APP_API_URL
+ENV REACT_APP_API_URL=${REACT_APP_API_URL}
+
+# Expose port 8080
+EXPOSE 8080
+
+# Start development server
+CMD ["npm", "start"]
