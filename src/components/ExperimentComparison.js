@@ -496,7 +496,7 @@ const ExperimentComparison = () => {
       <Card>
         <div style={{ display: "flex", gap: "16px", marginBottom: "16px" }}>
           <div style={{ flex: 1 }}>
-            <label>Experiment 1</label>
+            <label style={{ color: theme.colors.text.primary, marginBottom: "8px" }}>Experiment 1</label>
             <Select
               value={selectedExp1}
               onChange={(e) => {
@@ -513,7 +513,7 @@ const ExperimentComparison = () => {
             </Select>
           </div>
           <div style={{ flex: 1 }}>
-            <label>Experiment 2</label>
+            <label style={{ color: theme.colors.text.primary, marginBottom: "8px" }}>Experiment 2</label>
             <Select
               value={selectedExp2}
               onChange={(e) => {

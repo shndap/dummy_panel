@@ -161,6 +161,10 @@ const ExperimentInfo = () => {
               type="text"
               placeholder="Enter experiment id or code"
               value={experimentCode}
+              style={{
+                background: theme.colors.background.paper,
+                color: theme.colors.text.primary,
+              }}
               onChange={(e) => setExperimentCode(e.target.value)}
             />
           </div>

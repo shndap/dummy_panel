@@ -1239,6 +1239,8 @@ const FulltestDashboard = () => {
                   padding: "8px 10px",
                   border: `1px solid ${theme.colors.border}`,
                   borderRadius: "6px",
+                  background: theme.colors.background.paper,
+                  color: theme.colors.text.primary,
                 }}
               />
               <select
@@ -1247,7 +1249,9 @@ const FulltestDashboard = () => {
                 style={{
                   padding: "8px 10px",
                   border: `1px solid ${theme.colors.border}`,
+                  background: theme.colors.background.paper,
                   borderRadius: "6px",
+                  color: theme.colors.text.primary,
                 }}
               >
                 <option value="">All Tags</option>
@@ -1263,7 +1267,9 @@ const FulltestDashboard = () => {
                 style={{
                   padding: "8px 10px",
                   border: `1px solid ${theme.colors.border}`,
+                  background: theme.colors.background.paper,
                   borderRadius: "6px",
+                  color: theme.colors.text.primary,
                 }}
               >
                 <option value="">All Improvements</option>
@@ -1539,7 +1545,7 @@ const FulltestDashboard = () => {
                 Previous
               </button>
               <div
-                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                style={{ display: "flex", alignItems: "center", gap: "8px", color: theme.colors.text.primary }}
               >
                 Page {page}
               </div>

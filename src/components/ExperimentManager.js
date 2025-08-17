@@ -163,6 +163,33 @@ const ExperimentManager = () => {
 
   // Also replace boxShadow rgba(0,0,0,0.1) with theme.shadows.sm/md from theme.js where used
 
+  // Scrollbar colors aligned with theme
+  const scrollbarTrack = theme.colors.background.paper;
+  const scrollbarThumb = hexToRgba(theme.tokens.grey[900] || "#1A202C", 0.4);
+  const scrollbarThumbHover = hexToRgba(theme.tokens.grey[900] || "#1A202C", 0.6);
+  const scrollbarCss = `
+    .improved-experiments-scroll {
+      scrollbar-width: thin;
+      scrollbar-color: ${scrollbarThumb} ${scrollbarTrack};
+    }
+    .improved-experiments-scroll::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    .improved-experiments-scroll::-webkit-scrollbar-track {
+      background: ${scrollbarTrack};
+      border-radius: 8px;
+    }
+    .improved-experiments-scroll::-webkit-scrollbar-thumb {
+      background: ${scrollbarThumb};
+      border-radius: 8px;
+      border: 2px solid ${scrollbarTrack};
+    }
+    .improved-experiments-scroll::-webkit-scrollbar-thumb:hover {
+      background: ${scrollbarThumbHover};
+    }
+  `;
+
   useEffect(() => {
     return () => {
       if (chartRef.current) {
@@ -377,6 +404,7 @@ const ExperimentManager = () => {
         borderRadius: "16px",
       }}
     >
+      <style>{scrollbarCss}</style>
       <h2
         style={{
           color: theme.colors.text.primary,
@@ -485,11 +513,21 @@ const ExperimentManager = () => {
           )}
 
           <div
+            className="improved-experiments-scroll"
             style={{
               maxHeight: "400px",
               overflowY: "auto",
+              scrollbarWidth: "none", // Firefox
+              msOverflowStyle: "none", // IE/Edge
             }}
           >
+            <style>
+              {`
+                .improved-experiments-scroll::-webkit-scrollbar {
+                  display: none;
+                }
+              `}
+            </style>
             {experiments
               .filter((exp) => ensureArray(exp.improvements).length > 0)
               .map((exp) => {

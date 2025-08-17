@@ -174,6 +174,8 @@ const TestSuiteDashboard = () => {
               padding: "6px 10px",
               border: `1px solid ${theme.colors.border}`,
               borderRadius: 6,
+              background: theme.colors.background.paper,
+              color: theme.colors.text.primary,
             }}
           />
           <button
@@ -183,6 +185,7 @@ const TestSuiteDashboard = () => {
               border: `1px solid ${theme.colors.border}`,
               borderRadius: 6,
               background: theme.colors.background.paper,
+              color: theme.colors.text.primary,
               cursor: "pointer",
             }}
           >
@@ -198,6 +201,7 @@ const TestSuiteDashboard = () => {
               border: `1px solid ${theme.colors.border}`,
               borderRadius: 6,
               background: theme.colors.background.paper,
+              color: theme.colors.text.primary,
               cursor: "pointer",
             }}
           >
@@ -226,54 +230,46 @@ const TestSuiteDashboard = () => {
             <tr>
               <th
                 style={{
-                  textAlign: "left",
-                  padding: 12,
-                  borderBottom: `2px solid ${theme.tokens.ui.divider}`,
+                  ...thStyle(theme),
                 }}
               >
                 Asset
               </th>
               <th
                 style={{
-                  textAlign: "left",
-                  padding: 12,
-                  borderBottom: `2px solid ${theme.tokens.ui.divider}`,
+                  ...thStyle(theme),
                 }}
               >
                 Signal
               </th>
               <th
                 style={{
+                  ...thStyle(theme),
                   textAlign: "left",
-                  padding: 12,
-                  borderBottom: `2px solid ${theme.tokens.ui.divider}`,
                 }}
               >
                 Suite
               </th>
               <th
                 style={{
+                  ...thStyle(theme),
                   textAlign: "center",
-                  padding: 12,
-                  borderBottom: `2px solid ${theme.tokens.ui.divider}`,
                 }}
               >
                 Progress
               </th>
               <th
                 style={{
+                  ...thStyle(theme),
                   textAlign: "center",
-                  padding: 12,
-                  borderBottom: `2px solid ${theme.tokens.ui.divider}`,
                 }}
               >
                 Runs (done/started/total)
               </th>
               <th
                 style={{
+                  ...thStyle(theme),
                   textAlign: "center",
-                  padding: 12,
-                  borderBottom: `2px solid ${theme.tokens.ui.divider}`,
                 }}
               >
                 Tests
@@ -285,40 +281,36 @@ const TestSuiteDashboard = () => {
               <tr key={idx}>
                 <td
                   style={{
-                    padding: "12px",
-                    borderBottom: `1px solid ${theme.tokens.ui.divider}`,
+                    ...tdStyle(theme),
                   }}
                 >
                   {s.asset}
                 </td>
                 <td
                   style={{
-                    padding: "12px",
-                    borderBottom: `1px solid ${theme.tokens.ui.divider}`,
+                    ...tdStyle(theme),
                   }}
                 >
                   {s.signal || "-"}
                 </td>
                 <td
                   style={{
-                    padding: "12px",
-                    borderBottom: `1px solid ${theme.tokens.ui.divider}`,
+                    ...tdStyle(theme),
+                    textAlign: "left",
                   }}
                 >
                   {s.suite}
                 </td>
                 <td
                   style={{
-                    padding: "12px",
-                    borderBottom: `1px solid ${theme.tokens.ui.divider}`,
+                    ...tdStyle(theme),
                   }}
                 >
                   <ProgressBar value={s.progress} theme={theme} />
                 </td>
                 <td
                   style={{
-                    padding: "12px",
-                    borderBottom: `1px solid ${theme.tokens.ui.divider}`,
+                    ...tdStyle(theme),
                     textAlign: "center",
                   }}
                 >
@@ -337,8 +329,7 @@ const TestSuiteDashboard = () => {
                 </td>
                 <td
                   style={{
-                    padding: "12px",
-                    borderBottom: `1px solid ${theme.tokens.ui.divider}`,
+                    ...tdStyle(theme),
                     textAlign: "center",
                   }}
                 >
@@ -349,6 +340,7 @@ const TestSuiteDashboard = () => {
                       border: `1px solid ${theme.colors.border}`,
                       borderRadius: 6,
                       background: theme.colors.background.paper,
+                      color: theme.colors.text.primary,
                       cursor: "pointer",
                     }}
                   >
@@ -473,6 +465,7 @@ const TestSuiteDashboard = () => {
                   border: `1px solid ${theme.colors.border}`,
                   borderRadius: 6,
                   background: theme.colors.background.paper,
+                  color: theme.colors.text.primary,
                   cursor: "pointer",
                 }}
               >
@@ -545,6 +538,7 @@ const TestSuiteDashboard = () => {
                   border: `1px solid ${theme.colors.border}`,
                   borderRadius: 6,
                   background: theme.colors.background.paper,
+                  color: theme.colors.text.primary,
                   cursor: "pointer",
                 }}
               >
@@ -564,36 +558,32 @@ const TestSuiteDashboard = () => {
                   <tr>
                     <th
                       style={{
+                        ...thStyle(theme),
                         textAlign: "left",
-                        padding: 8,
-                        borderBottom: `2px solid ${theme.tokens.ui.divider}`,
                       }}
                     >
                       Name
                     </th>
                     <th
                       style={{
+                        ...thStyle(theme),
                         textAlign: "center",
-                        padding: 8,
-                        borderBottom: `2px solid ${theme.tokens.ui.divider}`,
                       }}
                     >
                       Progress
                     </th>
                     <th
                       style={{
+                        ...thStyle(theme),
                         textAlign: "center",
-                        padding: 8,
-                        borderBottom: `2px solid ${theme.tokens.ui.divider}`,
                       }}
                     >
                       Runs (done/started/total)
                     </th>
                     <th
                       style={{
+                        ...thStyle(theme),
                         textAlign: "center",
-                        padding: 8,
-                        borderBottom: `2px solid ${theme.tokens.ui.divider}`,
                       }}
                     >
                       Plot
@@ -605,24 +595,22 @@ const TestSuiteDashboard = () => {
                     <tr key={i}>
                       <td
                         style={{
-                          padding: 8,
-                          borderBottom: `1px solid ${theme.tokens.ui.divider}`,
+                          ...tdStyle(theme),
+                          textAlign: "left",
                         }}
                       >
                         {t.name}
                       </td>
                       <td
                         style={{
-                          padding: 8,
-                          borderBottom: `1px solid ${theme.tokens.ui.divider}`,
+                          ...tdStyle(theme),
                         }}
                       >
                         <ProgressBar value={t.progress} theme={theme} />
                       </td>
                       <td
                         style={{
-                          padding: 8,
-                          borderBottom: `1px solid ${theme.tokens.ui.divider}`,
+                          ...tdStyle(theme),
                           textAlign: "center",
                         }}
                       >
@@ -630,8 +618,7 @@ const TestSuiteDashboard = () => {
                       </td>
                       <td
                         style={{
-                          padding: 8,
-                          borderBottom: `1px solid ${theme.tokens.ui.divider}`,
+                          ...tdStyle(theme),
                           textAlign: "center",
                         }}
                       >
@@ -655,7 +642,7 @@ const TestSuiteDashboard = () => {
                               border: `1px solid ${theme.colors.info.main}`,
                               borderRadius: 6,
                               background: theme.colors.info.main,
-                              color: theme.tokens.grey[100],
+                              color: theme.colors.text.primary,
                               cursor: "pointer",
                             }}
                           >
@@ -693,6 +680,7 @@ const TestSuiteDashboard = () => {
                   border: `1px solid ${theme.colors.border}`,
                   borderRadius: 6,
                   background: theme.colors.background.paper,
+                  color: theme.colors.text.primary,
                   cursor: "pointer",
                   ...(testsModal.pagination?.hasPrevPage === false
                     ? { cursor: "not-allowed" }
@@ -731,6 +719,7 @@ const TestSuiteDashboard = () => {
                   border: `1px solid ${theme.colors.border}`,
                   borderRadius: 6,
                   background: theme.colors.background.paper,
+                  color: theme.colors.text.primary,
                   cursor: "pointer",
                   ...(testsModal.pagination?.hasNextPage === false
                     ? { cursor: "not-allowed" }
@@ -746,5 +735,20 @@ const TestSuiteDashboard = () => {
     </div>
   );
 };
+
+// Shared table styles consistent with other tabs
+const thStyle = (theme) => ({
+  padding: "12px",
+  textAlign: "left",
+  borderBottom: `2px solid ${theme.tokens.ui.divider}`,
+  color: theme.colors.text.secondary,
+  fontWeight: "600",
+});
+
+const tdStyle = (theme) => ({
+  padding: "16px 12px",
+  borderBottom: `1px solid ${theme.tokens.ui.divider}`,
+  color: theme.colors.text.primary,
+});
 
 export default TestSuiteDashboard;

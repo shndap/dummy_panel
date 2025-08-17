@@ -354,7 +354,7 @@ const ExperimentList = () => {
             borderRadius: "12px",
             fontSize: "12px",
             fontWeight: "500",
-            backgroundColor: theme.tokens.grey[300],
+            // backgroundColor: theme.tokens.grey[300],
             color: theme.colors.text.secondary,
           }}
         >
@@ -691,6 +691,10 @@ const ExperimentList = () => {
             type="text"
             placeholder="Search experiments..."
             value={searchTerm}
+            style={{
+              background: theme.colors.background.paper,
+              color: theme.colors.text.primary,
+            }}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           <Select
@@ -735,7 +739,7 @@ const ExperimentList = () => {
           style={{
             marginBottom: "16px",
             padding: "12px",
-            backgroundColor: "#F7FAFC",
+            backgroundColor: theme.colors.background.paper,
             borderRadius: "8px",
             border: "1px solid #E2E8F0",
           }}
@@ -745,7 +749,8 @@ const ExperimentList = () => {
               fontSize: "14px",
               fontWeight: "600",
               marginBottom: "8px",
-              color: "#4A5568",
+              color: theme.colors.text.primary,
+              background: theme.colors.background.paper,
             }}
           >
             Filter by Tags:
@@ -756,6 +761,7 @@ const ExperimentList = () => {
               flexWrap: "wrap",
               gap: "2px",
               alignItems: "flex-start",
+              background: theme.colors.background.paper,
             }}
           >
             {allTags.map((tag) => (
@@ -772,7 +778,7 @@ const ExperimentList = () => {
               style={{
                 marginTop: "8px",
                 fontSize: "12px",
-                color: "#718096",
+                color: theme.colors.text.secondary,
               }}
             >
               Selected: {selectedTags.join(", ")}
@@ -782,9 +788,9 @@ const ExperimentList = () => {
                   marginLeft: "8px",
                   padding: "2px 6px",
                   fontSize: "11px",
-                  border: "1px solid #CBD5E0",
+                  border: `1px solid ${theme.colors.border}`,
                   borderRadius: "4px",
-                  background: "white",
+                  background: theme.colors.background.paper,
                   cursor: "pointer",
                 }}
               >
@@ -793,55 +799,6 @@ const ExperimentList = () => {
             </div>
           )}
         </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: "8px",
-            marginBottom: "16px",
-            flexWrap: "wrap",
-          }}
-        >
-          <QuickFilter
-            label="All"
-            count={totalCount}
-            active={filterType === "all"}
-            onClick={() => setFilterType("all")}
-          />
-          <QuickFilter
-            label="Invalid"
-            count={
-              experiments.filter((e) => e.status === "invalid" || !e.isValid)
-                .length
-            }
-            active={filterType === "invalid"}
-            onClick={() => setFilterType("invalid")}
-          />
-          <QuickFilter
-            label="Profitable"
-            count={
-              experiments.filter(
-                (e) =>
-                  typeof e.financial?.pnl === "number" && e.financial.pnl > 0
-              ).length
-            }
-            active={false}
-            onClick={() => {}}
-          />
-          <QuickFilter
-            label="High Win Rate"
-            count={
-              experiments.filter(
-                (e) =>
-                  typeof e.financial?.winRate === "number" &&
-                  e.financial.winRate > 0.6
-              ).length
-            }
-            active={false}
-            onClick={() => {}}
-          />
-        </div>
-
         {isLoading && (
           <div
             style={{
@@ -1204,7 +1161,9 @@ const ExperimentList = () => {
                           key={`h1-${idx}`}
                           style={{
                             ...thStyle(theme),
-                            backgroundColor: "#F0FFF4",
+                            color: theme.colors.text.secondary,
+                            borderBottom: `1px solid ${theme.colors.border}`,
+                            backgroundColor: theme.colors.background.main,
                             borderRight: `1px solid ${theme.colors.border}`,
                           }}
                           colSpan={cell.colSpan}
@@ -1225,7 +1184,9 @@ const ExperimentList = () => {
                         key={`h${rIdx + 2}-${idx}`}
                         style={{
                           ...thStyle(theme),
-                          backgroundColor: "#F0FFF4",
+                          color: theme.colors.text.secondary,
+                          borderBottom: `1px solid ${theme.colors.border}`,
+                          backgroundColor: theme.colors.background.main,
                           borderRight: `1px solid ${theme.colors.border}`,
                         }}
                         colSpan={cell.colSpan}
@@ -1248,13 +1209,13 @@ const ExperimentList = () => {
                         transition: "background-color 0.2s ease",
                         backgroundColor:
                           exp.status === "invalid" || !exp.isValid
-                            ? "#FFF5F5"
+                            ? theme.colors.error.light
                             : theme.colors.background.paper,
                         "&:hover": {
                           backgroundColor:
                             exp.status === "invalid" || !exp.isValid
-                              ? "#FED7D7"
-                              : "#F7FAFC",
+                              ? theme.colors.error.light
+                              : theme.colors.background.paper,
                         },
                       }}
                     >
@@ -1509,7 +1470,6 @@ const ExperimentList = () => {
                           key={`mh1-${idx}`}
                           style={{
                             ...thStyle(theme),
-                            backgroundColor: "#F0FFF4",
                             borderRight: `1px solid ${theme.colors.border}`,
                           }}
                           colSpan={cell.colSpan}
@@ -1540,7 +1500,6 @@ const ExperimentList = () => {
                         key={`mh${rIdx + 2}-${idx}`}
                         style={{
                           ...thStyle(theme),
-                          backgroundColor: "#F0FFF4",
                           borderRight: `1px solid ${theme.colors.border}`,
                         }}
                         colSpan={cell.colSpan}
@@ -1805,6 +1764,7 @@ const ExperimentList = () => {
                 alignItems: "center",
                 gap: "8px",
                 padding: "0 16px",
+                color: theme.colors.text.primary,
               }}
             >
               Page {currentPage} of {totalPages}
