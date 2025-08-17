@@ -126,17 +126,17 @@ const ExperimentInfo = () => {
             whiteSpace: "pre",
           };
           if (isHeader(line)) {
-            style.background = theme.tokens.grey[900];
-            style.color = theme.tokens.accent.blue.main;
+            style.background = theme.tokens.gitDiff.header.bg;
+            style.color = theme.tokens.gitDiff.header.text;
           } else if (isHunk(line)) {
-            style.background = theme.tokens.accent.purple.dark;
-            style.color = theme.tokens.ui.highlight;
+            style.background = theme.tokens.gitDiff.hunk.bg;
+            style.color = theme.tokens.gitDiff.hunk.text;
           } else if (isAdd(line)) {
-            style.background = theme.tokens.accent.green.dark;
-            style.color = theme.tokens.accent.green.main;
+            style.background = theme.tokens.gitDiff.add.bg;
+            style.color = theme.tokens.gitDiff.add.text;
           } else if (isDel(line)) {
-            style.background = theme.tokens.accent.red.dark;
-            style.color = theme.tokens.ui.error;
+            style.background = theme.tokens.gitDiff.del.bg;
+            style.color = theme.tokens.gitDiff.del.text;
           } else {
             style.color = theme.tokens.grey[300];
           }

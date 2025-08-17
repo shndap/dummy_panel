@@ -37,6 +37,25 @@ const baseTokens = {
     red: { extra: '#fbbcbc', main: '#E53E3E', light: '#F56565', dark: '#e74c3c' },
     purple: { extra: '#d1b3fa', main: '#6B46C1', light: '#9F7AEA', dark: '#553C9A' },
   },
+
+  gitDiff: {
+    add: {
+      bg: 'rgb(24, 54, 34)',      // much darker green background
+      text: 'rgb(183, 245, 200)', // keep text light for contrast
+    },
+    del: {
+      bg: 'rgb(54, 24, 24)',      // much darker red background
+      text: 'rgb(251, 188, 188)', // keep text light for contrast
+    },
+    hunk: {
+      bg: 'rgb(40, 24, 54)',      // much darker purple background
+      text: 'rgb(209, 179, 250)', // keep text light for contrast
+    },
+    header: {
+      bg: 'rgb(20, 24, 32)',      // much darker header background
+      text: 'rgb(49, 130, 206)',  // keep text as is for contrast
+    },
+  },
 };
 
 // Helper function to create a theme with tokens
