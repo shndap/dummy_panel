@@ -146,3 +146,8 @@ export async function listTestSuiteTests(params = {}) {
 export async function getJobStatus() {
   return apiFetch('/api/dashboard/job_status/');
 }
+
+// POST /api/dashboard/migrate_test_suites/
+export async function migrateTestSuites() {
+  return apiFetch('/api/dashboard/migrate_test_suites/', { method: 'POST' });
+}

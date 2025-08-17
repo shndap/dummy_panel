@@ -425,11 +425,13 @@ const ExperimentManager = () => {
             borderRadius: "6px",
             border: `1px solid ${theme.colors.border}`,
             background: isMigrating
-              ? theme.tokens.grey[300]
+              ? theme.tokens.accent.blue.dark
               : theme.colors.background.paper,
             cursor: isMigrating ? "not-allowed" : "pointer",
             fontSize: "13px",
-            color: theme.colors.text.primary,
+            color: isMigrating
+              ? theme.tokens.accent.blue.light
+              : theme.colors.text.primary,
           }}
         >
           {isMigrating ? "Refreshing…" : "Refresh"}

@@ -3,6 +3,7 @@ import {
   listTestSuites,
   getTestSuitePlot,
   listTestSuiteTests,
+  migrateTestSuites,
 } from "../api/fulltests";
 import { useTheme } from "../contexts/ThemeContext";
 import { hexToRgba } from "../utils/color";
@@ -36,6 +37,7 @@ const TestSuiteDashboard = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isMigrating, setIsMigrating] = useState(false);
   const [plotModal, setPlotModal] = useState({ open: false, html: "" });
   const [testsModal, setTestsModal] = useState({
     open: false,
@@ -206,6 +208,31 @@ const TestSuiteDashboard = () => {
             }}
           >
             Reset
+          </button>
+          <button
+            onClick={async () => {
+              setIsMigrating(true);
+              setError(null);
+              try {
+                await migrateTestSuites();
+                await load(1, search, limit);
+              } catch (e) {
+                setError(e?.message || "Failed to migrate test suites");
+              } finally {
+                setIsMigrating(false);
+              }
+            }}
+            disabled={isMigrating}
+            style={{
+              padding: "6px 10px",
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: 6,
+              background: theme.colors.background.paper,
+              color: theme.colors.text.primary,
+              cursor: isMigrating ? "not-allowed" : "pointer",
+            }}
+          >
+            {isMigrating ? "Refreshing…" : "Refresh"}
           </button>
         </div>
       </div>

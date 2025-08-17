@@ -20,14 +20,15 @@ const getColorsByStatus = (theme) => ({
   stopped: theme.colors.warning.main,
 });
 
-const IconButton = ({ onClick, title, children, variant = "default" }) => {
+const IconButton = ({ onClick, title, children, variant = "default", disabled = false }) => {
   const [hovered, setHovered] = useState(false);
   const { theme } = useTheme();
 
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
       title={title}
+      disabled={disabled}
       style={{
         border: "none",
         background: hovered
@@ -35,7 +36,7 @@ const IconButton = ({ onClick, title, children, variant = "default" }) => {
             ? theme.tokens.ui.warning
             : theme.tokens.grey[300]
           : "transparent",
-        cursor: "pointer",
+        cursor: disabled ? "not-allowed" : "pointer",
         padding: "6px",
         borderRadius: "6px",
         color:
@@ -46,6 +47,8 @@ const IconButton = ({ onClick, title, children, variant = "default" }) => {
         alignItems: "center",
         justifyContent: "center",
         transition: "background 0.15s",
+        opacity: disabled ? 0.6 : 1,
+        pointerEvents: disabled ? "none" : "auto",
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -55,6 +58,36 @@ const IconButton = ({ onClick, title, children, variant = "default" }) => {
   );
 };
 
+const Spinner = ({ size = 18, color = "currentColor" }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 50 50"
+    style={{ display: "block" }}
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <circle
+      cx="25"
+      cy="25"
+      r="20"
+      fill="none"
+      stroke={color}
+      strokeWidth="5"
+      strokeLinecap="round"
+      strokeDasharray="31.415, 31.415"
+    >
+      <animateTransform
+        attributeName="transform"
+        type="rotate"
+        from="0 25 25"
+        to="360 25 25"
+        dur="0.9s"
+        repeatCount="indefinite"
+      />
+    </circle>
+  </svg>
+);
+
 const PlayIcon = ({ size = 20 }) => (
   <svg
     width={size}
@@ -63,7 +96,7 @@ const PlayIcon = ({ size = 20 }) => (
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    <path d="M8 5v14l11-7L8 5z" fill="#2B6CB0" />
+    <path d="M8 5v14l11-7L8 5z" fill="currentColor" />
   </svg>
 );
 
@@ -513,13 +546,22 @@ const FulltestDashboard = () => {
   //   return () => clearInterval(interval);
   // }, [fulltests]);
 
+  const [startingById, setStartingById] = useState({});
+
   const handleStart = async (id, highPriority = false) => {
+    setStartingById((prev) => ({ ...prev, [id]: true }));
     try {
       const response = await startFulltest(id, highPriority);
       console.log(response);
       await refreshList(page, searchTerm);
     } catch (e) {
       alert(e.data ? JSON.stringify(e.data) : e.message);
+    } finally {
+      setStartingById((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     }
   };
 
@@ -1473,14 +1515,24 @@ const FulltestDashboard = () => {
                             <IconButton
                               onClick={() => handleStart(test.id)}
                               title="Start"
+                              disabled={!!startingById[test.id]}
                             >
-                              <PlayIcon />
+                              {startingById[test.id] ? (
+                                <Spinner color={theme.colors.info.main} size={18} />
+                              ) : (
+                                <PlayIcon />
+                              )}
                             </IconButton>
                             <IconButton
                               onClick={() => handleStart(test.id, true)}
                               title="Start High Priority"
+                              disabled={!!startingById[test.id]}
                             >
-                              <PlayHighPriorityIcon />
+                              {startingById[test.id] ? (
+                                <Spinner color={theme.colors.info.main} size={18} />
+                              ) : (
+                                <PlayHighPriorityIcon />
+                              )}
                             </IconButton>
                             <IconButton
                               onClick={() => handlePause(test.id)}
