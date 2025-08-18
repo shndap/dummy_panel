@@ -439,6 +439,11 @@ const FulltestDashboard = () => {
   const [podLogsMap, setPodLogsMap] = useState({}); // { podName: string }
   const [selectedPod, setSelectedPod] = useState("");
 
+  // New: delete confirmation modal state
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [toDelete, setToDelete] = useState(null); // holds the fulltest object
+  const [deleting, setDeleting] = useState(false);
+
   async function refreshList(p = page, q = searchTerm) {
     setLoading(true);
     setError(null);
@@ -703,6 +708,26 @@ const FulltestDashboard = () => {
       alert(e.data ? JSON.stringify(e.data) : e.message);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const openDeleteModal = (test) => {
+    setToDelete(test);
+    setIsDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!toDelete) return;
+    setDeleting(true);
+    try {
+      await deleteFulltest(toDelete.id);
+      setIsDeleteOpen(false);
+      setToDelete(null);
+      await refreshList(page, searchTerm);
+    } catch (e) {
+      alert(e.data ? JSON.stringify(e.data) : e.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -1098,6 +1123,89 @@ const FulltestDashboard = () => {
                 }}
               >
                 {creating ? "Creating..." : "Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isDeleteOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              background: theme.colors.background.paper,
+              borderRadius: "8px",
+              padding: "16px",
+              width: "90%",
+              maxWidth: "480px",
+            }}
+          >
+            <h3
+              style={{
+                marginTop: 0,
+                marginBottom: "12px",
+                color: theme.colors.text.primary,
+              }}
+            >
+              Delete Fulltest
+            </h3>
+            <div style={{ color: theme.colors.text.secondary, fontSize: "14px", lineHeight: 1.4 }}>
+              Are you sure you want to delete
+              {" "}
+              <strong style={{ color: theme.colors.text.primary }}>
+                {toDelete?.name || toDelete?.code || `#${toDelete?.id}`}
+              </strong>
+              ? This action cannot be undone.
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "8px",
+                marginTop: "16px",
+              }}
+            >
+              <button
+                onClick={() => {
+                  if (deleting) return;
+                  setIsDeleteOpen(false);
+                  setToDelete(null);
+                }}
+                disabled={deleting}
+                style={{
+                  padding: "8px 12px",
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: "6px",
+                  background: theme.colors.background.paper,
+                  cursor: deleting ? "not-allowed" : "pointer",
+                  color: theme.colors.text.primary,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                style={{
+                  padding: "8px 12px",
+                  border: `1px solid ${theme.colors.error.main}`,
+                  borderRadius: "6px",
+                  background: theme.colors.error.main,
+                  color: theme.tokens.grey[100],
+                  cursor: deleting ? "not-allowed" : "pointer",
+                }}
+              >
+                {deleting ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>
@@ -1553,7 +1661,7 @@ const FulltestDashboard = () => {
                               <ScrollIcon />
                             </IconButton>
                             <IconButton
-                              onClick={() => handleDelete(test.id)}
+                              onClick={() => openDeleteModal(test)}
                               title="Delete"
                               variant="danger"
                             >
