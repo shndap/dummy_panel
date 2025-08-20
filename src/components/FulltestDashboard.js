@@ -20,7 +20,13 @@ const getColorsByStatus = (theme) => ({
   stopped: theme.colors.warning.main,
 });
 
-const IconButton = ({ onClick, title, children, variant = "default", disabled = false }) => {
+const IconButton = ({
+  onClick,
+  title,
+  children,
+  variant = "default",
+  disabled = false,
+}) => {
   const [hovered, setHovered] = useState(false);
   const { theme } = useTheme();
 
@@ -96,7 +102,8 @@ const PlayIcon = ({ size = 20 }) => (
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    <path d="M8 5v14l11-7L8 5z" fill="currentColor" />
+    {/* Use the same blue as PlayHighPriorityIcon */}
+    <path d="M8 5v14l11-7L8 5z" fill="#2B6CB0" />
   </svg>
 );
 
@@ -438,6 +445,8 @@ const FulltestDashboard = () => {
   const [isPodLogsOpen, setIsPodLogsOpen] = useState(false);
   const [podLogsMap, setPodLogsMap] = useState({}); // { podName: string }
   const [selectedPod, setSelectedPod] = useState("");
+  const [podLogsTarget, setPodLogsTarget] = useState("");
+  const [refreshingPodLogs, setRefreshingPodLogs] = useState(false);
 
   // New: delete confirmation modal state
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -681,9 +690,28 @@ const FulltestDashboard = () => {
       const first = Object.keys(pods)[0] || "";
       setPodLogsMap(pods);
       setSelectedPod(first);
+      setPodLogsTarget(name);
       setIsPodLogsOpen(true);
     } catch (e) {
       alert(e.data ? JSON.stringify(e.data) : e.message);
+    }
+  };
+
+  const refreshContainerLogs = async () => {
+    if (!podLogsTarget) return;
+    setRefreshingPodLogs(true);
+    try {
+      const res = await getKubeLogs(podLogsTarget, 500);
+      const pods = normalizePodLogs(res?.content);
+      const nextSelected = pods[selectedPod]
+        ? selectedPod
+        : Object.keys(pods)[0] || "";
+      setPodLogsMap(pods);
+      setSelectedPod(nextSelected);
+    } catch (e) {
+      alert(e.data ? JSON.stringify(e.data) : e.message);
+    } finally {
+      setRefreshingPodLogs(false);
     }
   };
 
@@ -1159,9 +1187,14 @@ const FulltestDashboard = () => {
             >
               Delete Fulltest
             </h3>
-            <div style={{ color: theme.colors.text.secondary, fontSize: "14px", lineHeight: 1.4 }}>
-              Are you sure you want to delete
-              {" "}
+            <div
+              style={{
+                color: theme.colors.text.secondary,
+                fontSize: "14px",
+                lineHeight: 1.4,
+              }}
+            >
+              Are you sure you want to delete{" "}
               <strong style={{ color: theme.colors.text.primary }}>
                 {toDelete?.name || toDelete?.code || `#${toDelete?.id}`}
               </strong>
@@ -1251,19 +1284,55 @@ const FulltestDashboard = () => {
               >
                 Kubernetes Container Logs
               </div>
-              <button
-                onClick={() => setIsPodLogsOpen(false)}
-                style={{
-                  border: `1px solid ${theme.colors.border}`,
-                  background: theme.colors.background.paper,
-                  borderRadius: "6px",
-                  padding: "6px 10px",
-                  cursor: "pointer",
-                  color: theme.colors.text.primary,
-                }}
-              >
-                Close
-              </button>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  onClick={refreshContainerLogs}
+                  disabled={refreshingPodLogs}
+                  title="Refresh logs"
+                  style={{
+                    border: `1px solid ${theme.colors.info.main}`,
+                    background: theme.colors.info.main,
+                    borderRadius: "6px",
+                    padding: "6px 10px",
+                    cursor: refreshingPodLogs ? "not-allowed" : "pointer",
+                    color: theme.tokens.grey[100],
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {refreshingPodLogs ? (
+                    <Spinner size={16} color={theme.tokens.grey[100]} />
+                  ) : (
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      style={{ display: "block" }}
+                    >
+                      <path
+                        d="M19.146 4.854l-1.489 1.489A8 8 0 1 0 12 20a8.094 8.094 0 0 0 7.371-4.886 1 1 0 1 0-1.842-.779A6.071 6.071 0 0 1 12 18a6 6 0 1 1 4.243-10.243l-1.39 1.39a.5.5 0 0 0 .354.854H19.5A.5.5 0 0 0 20 9.5V5.207a.5.5 0 0 0-.854-.353z"
+                        fill={theme.tokens.grey[100]}
+                      />
+                    </svg>
+                  )}
+                </button>
+                <button
+                  onClick={() => setIsPodLogsOpen(false)}
+                  style={{
+                    border: `1px solid ${theme.colors.border}`,
+                    background: theme.colors.background.paper,
+                    borderRadius: "6px",
+                    padding: "6px 10px",
+                    cursor: "pointer",
+                    color: theme.colors.text.primary,
+                  }}
+                >
+                  Close
+                </button>
+              </div>
             </div>
             <div
               style={{
@@ -1290,7 +1359,7 @@ const FulltestDashboard = () => {
                     No pods
                   </div>
                 ) : (
-                  Object.keys(podLogsMap).map((pod) => (
+                  Object.keys(podLogsMap).map((pod, idx) => (
                     <div
                       key={pod}
                       onClick={() => setSelectedPod(pod)}
@@ -1301,7 +1370,7 @@ const FulltestDashboard = () => {
                         cursor: "pointer",
                         background:
                           selectedPod === pod
-                            ? theme.tokens.grey[300]
+                            ? theme.tokens.accent.blue.light
                             : "transparent",
                         color:
                           selectedPod === pod
@@ -1312,10 +1381,23 @@ const FulltestDashboard = () => {
                         maxWidth: "100%",
                         wordBreak: "break-all",
                         whiteSpace: "normal",
+                        textAlign: "left",
                       }}
                       title={pod}
                     >
-                      {pod}
+                      <div style={{ fontWeight: 600, fontSize: "15px" }}>
+                        Pod #{idx + 1}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "10px",
+                          color: theme.colors.text.secondary,
+                          marginTop: "2px",
+                          wordBreak: "break-all",
+                        }}
+                      >
+                        {pod}
+                      </div>
                     </div>
                   ))
                 )}
@@ -1626,7 +1708,10 @@ const FulltestDashboard = () => {
                               disabled={!!startingById[test.id]}
                             >
                               {startingById[test.id] ? (
-                                <Spinner color={theme.colors.info.main} size={18} />
+                                <Spinner
+                                  color={theme.colors.info.main}
+                                  size={18}
+                                />
                               ) : (
                                 <PlayIcon />
                               )}
@@ -1637,7 +1722,10 @@ const FulltestDashboard = () => {
                               disabled={!!startingById[test.id]}
                             >
                               {startingById[test.id] ? (
-                                <Spinner color={theme.colors.info.main} size={18} />
+                                <Spinner
+                                  color={theme.colors.info.main}
+                                  size={18}
+                                />
                               ) : (
                                 <PlayHighPriorityIcon />
                               )}
@@ -1705,7 +1793,12 @@ const FulltestDashboard = () => {
                 Previous
               </button>
               <div
-                style={{ display: "flex", alignItems: "center", gap: "8px", color: theme.colors.text.primary }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  color: theme.colors.text.primary,
+                }}
               >
                 Page {page}
               </div>
