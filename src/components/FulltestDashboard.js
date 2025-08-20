@@ -452,6 +452,7 @@ const FulltestDashboard = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [toDelete, setToDelete] = useState(null); // holds the fulltest object
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   async function refreshList(p = page, q = searchTerm) {
     setLoading(true);
@@ -561,6 +562,10 @@ const FulltestDashboard = () => {
   // }, [fulltests]);
 
   const [startingById, setStartingById] = useState({});
+  const [pausingById, setPausingById] = useState({});
+  const [logsLoadingById, setLogsLoadingById] = useState({});
+  const [containerLogsLoadingByName, setContainerLogsLoadingByName] = useState({});
+  const [actionErrorById, setActionErrorById] = useState({});
 
   const handleStart = async (id, highPriority = false) => {
     setStartingById((prev) => ({ ...prev, [id]: true }));
@@ -568,8 +573,14 @@ const FulltestDashboard = () => {
       const response = await startFulltest(id, highPriority);
       console.log(response);
       await refreshList(page, searchTerm);
+      setActionErrorById((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     } catch (e) {
-      alert(e.data ? JSON.stringify(e.data) : e.message);
+      const msg = e.data ? JSON.stringify(e.data) : e.message;
+      setActionErrorById((prev) => ({ ...prev, [id]: msg }));
     } finally {
       setStartingById((prev) => {
         const next = { ...prev };
@@ -580,11 +591,24 @@ const FulltestDashboard = () => {
   };
 
   const handlePause = async (id) => {
+    setPausingById((prev) => ({ ...prev, [id]: true }));
     try {
       await stopFulltest(id);
       await refreshList(page, searchTerm);
+      setActionErrorById((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     } catch (e) {
-      alert(e.data ? JSON.stringify(e.data) : e.message);
+      const msg = e.data ? JSON.stringify(e.data) : e.message;
+      setActionErrorById((prev) => ({ ...prev, [id]: msg }));
+    } finally {
+      setPausingById((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     }
   };
 
@@ -598,6 +622,7 @@ const FulltestDashboard = () => {
   };
 
   const openLogs = async (id) => {
+    setLogsLoadingById((prev) => ({ ...prev, [id]: true }));
     try {
       const data = await getFulltestLogs(id);
       const text = Array.isArray(data.content)
@@ -608,8 +633,20 @@ const FulltestDashboard = () => {
       const pretty = formatLogsString(text);
       setLogs(pretty.split("\n"));
       setShowFullLogs(id);
+      setActionErrorById((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     } catch (e) {
-      alert(e.data ? JSON.stringify(e.data) : e.message);
+      const msg = e.data ? JSON.stringify(e.data) : e.message;
+      setActionErrorById((prev) => ({ ...prev, [id]: msg }));
+    } finally {
+      setLogsLoadingById((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     }
   };
 
@@ -683,7 +720,8 @@ const FulltestDashboard = () => {
     return collapsed.join("\n");
   }
 
-  const openContainerLogs = async (name) => {
+  const openContainerLogs = async (name, rowId) => {
+    setContainerLogsLoadingByName((prev) => ({ ...prev, [name]: true }));
     try {
       const res = await getKubeLogs(name, 500);
       const pods = normalizePodLogs(res?.content);
@@ -692,8 +730,23 @@ const FulltestDashboard = () => {
       setSelectedPod(first);
       setPodLogsTarget(name);
       setIsPodLogsOpen(true);
+      if (rowId) {
+        setActionErrorById((prev) => {
+          const next = { ...prev };
+          delete next[rowId];
+          return next;
+        });
+      }
     } catch (e) {
-      alert(e.data ? JSON.stringify(e.data) : e.message);
+      const msg = e.data ? JSON.stringify(e.data) : e.message;
+      if (rowId) setActionErrorById((prev) => ({ ...prev, [rowId]: msg }));
+      else alert(msg);
+    } finally {
+      setContainerLogsLoadingByName((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
     }
   };
 
@@ -741,19 +794,22 @@ const FulltestDashboard = () => {
 
   const openDeleteModal = (test) => {
     setToDelete(test);
+    setDeleteError("");
     setIsDeleteOpen(true);
   };
 
   const handleConfirmDelete = async () => {
     if (!toDelete) return;
     setDeleting(true);
+    setDeleteError("");
     try {
       await deleteFulltest(toDelete.id);
       setIsDeleteOpen(false);
       setToDelete(null);
       await refreshList(page, searchTerm);
     } catch (e) {
-      alert(e.data ? JSON.stringify(e.data) : e.message);
+      const msg = e.data ? JSON.stringify(e.data) : e.message;
+      setDeleteError(msg);
     } finally {
       setDeleting(false);
     }
@@ -1200,6 +1256,19 @@ const FulltestDashboard = () => {
               </strong>
               ? This action cannot be undone.
             </div>
+            {deleteError && (
+              <div
+                style={{
+                  color: theme.colors.error.main,
+                  marginTop: "8px",
+                  fontSize: "12px",
+                  whiteSpace: "normal",
+                  wordBreak: "break-word",
+                }}
+              >
+                {String(deleteError)}
+              </div>
+            )}
             <div
               style={{
                 display: "flex",
@@ -1733,20 +1802,38 @@ const FulltestDashboard = () => {
                             <IconButton
                               onClick={() => handlePause(test.id)}
                               title="Pause"
+                              disabled={!!pausingById[test.id]}
                             >
-                              <PauseIcon />
+                              {pausingById[test.id] ? (
+                                <Spinner
+                                  color={theme.colors.warning.main}
+                                  size={18}
+                                />
+                              ) : (
+                                <PauseIcon />
+                              )}
                             </IconButton>
                             <IconButton
-                              onClick={() => openContainerLogs(nm)}
+                              onClick={() => openContainerLogs(nm, test.id)}
                               title="View Container Logs"
+                              disabled={!!containerLogsLoadingByName[nm]}
                             >
-                              <LogsIcon />
+                              {containerLogsLoadingByName[nm] ? (
+                                <Spinner color={theme.tokens.grey[600]} size={18} />
+                              ) : (
+                                <LogsIcon />
+                              )}
                             </IconButton>
                             <IconButton
                               onClick={() => openLogs(test.id)}
                               title="View Logs"
+                              disabled={!!logsLoadingById[test.id]}
                             >
-                              <ScrollIcon />
+                              {logsLoadingById[test.id] ? (
+                                <Spinner color={theme.tokens.grey[600]} size={18} />
+                              ) : (
+                                <ScrollIcon />
+                              )}
                             </IconButton>
                             <IconButton
                               onClick={() => openDeleteModal(test)}
@@ -1756,6 +1843,22 @@ const FulltestDashboard = () => {
                               <TrashIcon />
                             </IconButton>
                           </div>
+                          {actionErrorById[test.id] && (
+                            <div
+                              style={{
+                                color: theme.colors.error.main,
+                                fontSize: "12px",
+                                marginTop: "8px",
+                                whiteSpace: "normal",
+                                wordBreak: "break-word",
+                                maxWidth: "360px",
+                                marginLeft: "auto",
+                                marginRight: "auto",
+                              }}
+                            >
+                              {String(actionErrorById[test.id])}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );

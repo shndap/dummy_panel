@@ -11,6 +11,7 @@ COPY . .
 
 ARG REACT_APP_API_BASE_URL
 ENV REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL}
+ENV REACT_APP_DASHBOARD_PASSWORD='tr@derm0del'
 RUN npm run build
 
 # ---------- Production stage ----------
